@@ -3,9 +3,16 @@
 #import "EnrichedTextInputView.h"
 #import "HtmlParser.h"
 #import "StringExtension.h"
+#import "StyleHeaders.h"
 #import "TextInsertionUtils.h"
 #import "TextListsUtils.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+
+// Maximum nesting depth allowed for lists. Past this, Tab is consumed but
+// nothing happens — keeps marker widths and indents in a sensible range and
+// matches the per-level numbering format's natural cycle length (1 → a → i,
+// then back). 5 levels covers any realistic outline.
+static const NSInteger kEnrichedListMaxDepth = 4;
 
 @implementation EnrichedInputTextView
 
@@ -329,6 +336,158 @@
     }
   }
   return [super canPerformAction:action withSender:sender];
+}
+
+#pragma mark - List nesting (Tab / Shift-Tab)
+
+// Returns the list-style instance (UL / OL / Checkbox) that the paragraph at
+// the current selection is in, or nil if the selection isn't inside any list.
+// Used to dispatch Tab / Shift-Tab to the right family — at most one of the
+// three can be active at a time because list types are mutually exclusive on
+// a single paragraph.
+- (StyleBase *)activeListStyleForSelection {
+  EnrichedTextInputView *typedInput = (EnrichedTextInputView *)_input;
+  if (typedInput == nullptr)
+    return nil;
+
+  NSDictionary<NSNumber *, id> *dict = [typedInput stylesDict];
+  NSArray<NSNumber *> *candidates = @[
+    @([UnorderedListStyle getType]),
+    @([OrderedListStyle getType]),
+    @([CheckboxListStyle getType]),
+  ];
+  NSRange selectedRange = self.selectedRange;
+  for (NSNumber *type in candidates) {
+    StyleBase *style = dict[type];
+    if (style == nil)
+      continue;
+    if ([style detect:selectedRange])
+      return style;
+  }
+  return nil;
+}
+
+// Register Tab and Shift-Tab as UIKeyCommands. UITextView's UITextInput
+// conformance consumes \t as plain text BEFORE pressesBegan: ever fires on a
+// first-responder text view, so the more-natural pressesBegan: route is a
+// dead end here. UIKeyCommand is routed via the keyboard responder chain
+// before text insertion, which is the supported way to intercept Tab in an
+// editable text view on iOS.
+- (NSArray<UIKeyCommand *> *)keyCommands {
+  NSArray<UIKeyCommand *> *base = [super keyCommands] ?: @[];
+  UIKeyCommand *tab =
+      [UIKeyCommand keyCommandWithInput:@"\t"
+                          modifierFlags:0
+                                 action:@selector(katavHandleTab:)];
+  UIKeyCommand *shiftTab =
+      [UIKeyCommand keyCommandWithInput:@"\t"
+                          modifierFlags:UIKeyModifierShift
+                                 action:@selector(katavHandleShiftTab:)];
+  // wantsPriorityOverSystemBehavior makes UIKit prefer our command over
+  // built-in Tab/Shift-Tab semantics (e.g. focus traversal) when this view
+  // is first responder. Available since iOS 15.
+  if ([tab respondsToSelector:@selector(setWantsPriorityOverSystemBehavior:)]) {
+    tab.wantsPriorityOverSystemBehavior = YES;
+    shiftTab.wantsPriorityOverSystemBehavior = YES;
+  }
+  return [base arrayByAddingObjectsFromArray:@[ tab, shiftTab ]];
+}
+
+- (void)katavHandleTab:(UIKeyCommand *)cmd {
+  [self katavApplyListIndentDelta:+1];
+}
+
+- (void)katavHandleShiftTab:(UIKeyCommand *)cmd {
+  [self katavApplyListIndentDelta:-1];
+}
+
+// delta: +1 = indent, -1 = outdent. No-op outside a list (the key command
+// fired but we don't have anything to do). At depth 0 with delta -1, the
+// line leaves the list entirely.
+// Copy the textLists from the current paragraph in the text storage into
+// `typingAttributes`. iOS uses typingAttributes' pStyle for newly-inserted
+// text AND, empirically, propagates that pStyle across the whole paragraph
+// on the next text mutation. If we leave typingAttributes stale after an
+// indent change, the next character the user types reverts the entire
+// paragraph's depth — the visual "vai e volta" symptom.
+- (void)katavSyncTypingAttributesToCurrentParagraph {
+  NSUInteger textLen = self.textStorage.length;
+  if (textLen == 0)
+    return;
+  NSUInteger probe = MIN(self.selectedRange.location, textLen);
+  if (probe >= textLen && probe > 0)
+    probe--;
+  NSRange paragraph =
+      [self.textStorage.string paragraphRangeForRange:NSMakeRange(probe, 0)];
+  if (paragraph.length == 0)
+    return;
+  if (paragraph.location >= textLen)
+    return;
+
+  NSParagraphStyle *paragraphPStyle =
+      [self.textStorage attribute:NSParagraphStyleAttributeName
+                          atIndex:paragraph.location
+                   effectiveRange:NULL];
+  if (paragraphPStyle == nil)
+    return;
+
+  NSMutableDictionary *newTyping = [self.typingAttributes mutableCopy];
+  NSMutableParagraphStyle *typingPStyle =
+      [newTyping[NSParagraphStyleAttributeName] mutableCopy];
+  if (typingPStyle == nil) {
+    typingPStyle = [[NSMutableParagraphStyle alloc] init];
+  }
+  typingPStyle.textLists = paragraphPStyle.textLists;
+  newTyping[NSParagraphStyleAttributeName] = typingPStyle;
+  self.typingAttributes = newTyping;
+}
+
+- (void)katavApplyListIndentDelta:(NSInteger)delta {
+  StyleBase *style = [self activeListStyleForSelection];
+  if (style == nil)
+    return;
+
+  EnrichedTextInputView *typedInput = (EnrichedTextInputView *)_input;
+  NSRange selectedRange = self.selectedRange;
+  NSUInteger textLen = self.textStorage.length;
+
+  // Probe inside the containing paragraph rather than at selectedRange
+  // directly. Caret-at-end-of-text or caret-at-paragraph-boundary edge cases
+  // can land on a position whose pStyle belongs to a neighbouring paragraph
+  // (or trigger an NSRangeException from paragraphRangeForRange:). Anchoring
+  // to the paragraph start of a clamped location gives a stable read.
+  NSUInteger probeLocation = MIN(selectedRange.location, textLen);
+  if (probeLocation >= textLen && probeLocation > 0)
+    probeLocation--;
+
+  NSInteger depth = -1;
+  if (textLen > 0) {
+    NSRange probeParagraph = [self.textStorage.string
+        paragraphRangeForRange:NSMakeRange(probeLocation, 0)];
+    depth = [style depthAtLocation:probeParagraph.location];
+  }
+
+  if (delta < 0) {
+    if (depth <= 0) {
+      // At depth 0: remove from list entirely (Shift-Tab on a top-level
+      // bullet produces a plain paragraph, mirroring Enter-on-empty).
+      [style remove:selectedRange withDirtyRange:YES];
+    } else {
+      [style outdent:selectedRange];
+    }
+  } else {
+    if (depth < kEnrichedListMaxDepth) {
+      [style indent:selectedRange];
+    }
+    // Past the cap: no-op — the key command consumed the Tab, no \t leaks.
+  }
+
+  // Sync typing attributes BEFORE anyTextMayHaveBeenModified so the dirty
+  // cycle's manageTypingAttributes preserves the new depth from typing,
+  // not the old depth that was in typingAttributes before the mutation.
+  [self katavSyncTypingAttributesToCurrentParagraph];
+
+  [typedInput anyTextMayHaveBeenModified];
 }
 
 @end

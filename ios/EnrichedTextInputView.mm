@@ -163,6 +163,24 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   textView.layoutManager.input = self;
   textView.textStorage.delegate = self;
 
+  // Note-taking editor — autocorrect / spell-check / smart punctuation all
+  // interact badly with rich-text formatting: they trigger silent
+  // replacement events (UITextInput inserts a corrected word, which goes
+  // through our typing-attributes path and can revert paragraph styling)
+  // and they "underline" misspelled words in a way that visually clashes
+  // with our own underline mark. Predictive bar adds clutter on iPad. The
+  // user can still spell-check from the system context menu when they want
+  // to.
+  textView.autocorrectionType = UITextAutocorrectionTypeNo;
+  textView.spellCheckingType = UITextSpellCheckingTypeNo;
+  textView.autocapitalizationType = UITextAutocapitalizationTypeSentences;
+  textView.smartDashesType = UITextSmartDashesTypeNo;
+  textView.smartQuotesType = UITextSmartQuotesTypeNo;
+  textView.smartInsertDeleteType = UITextSmartInsertDeleteTypeNo;
+  if (@available(iOS 17.0, *)) {
+    textView.inlinePredictionType = UITextInlinePredictionTypeNo;
+  }
+
   textView.adjustsFontForContentSizeCategory = YES;
   [textView addGestureRecognizer:[[TextBlockTapGestureRecognizer alloc]
                                      initWithInput:self
@@ -1265,6 +1283,10 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"toggleCheckboxList"]) {
     BOOL checked = [args[0] boolValue];
     [self toggleCheckboxList:checked];
+  } else if ([commandName isEqualToString:@"indentList"]) {
+    [self indentListAtSelection];
+  } else if ([commandName isEqualToString:@"outdentList"]) {
+    [self outdentListAtSelection];
   } else if ([commandName isEqualToString:@"toggleBlockQuote"]) {
     [self toggleRegularStyle:[BlockQuoteStyle getType]];
   } else if ([commandName isEqualToString:@"toggleCodeBlock"]) {
@@ -1517,6 +1539,69 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     [style toggleWithChecked:checked range:range];
     [self anyTextMayHaveBeenModified];
   }
+}
+
+// Finds the list style (UL / OL / Checkbox) active at the current selection,
+// or nil if the caret is outside any list. Mirrors EnrichedInputTextView's
+// activeListStyleForSelection — duplicated here because the JS command path
+// doesn't go through the text view.
+- (StyleBase *)activeListStyleForCurrentSelection {
+  NSArray<NSNumber *> *candidates = @[
+    @([UnorderedListStyle getType]),
+    @([OrderedListStyle getType]),
+    @([CheckboxListStyle getType]),
+  ];
+  NSRange range = textView.selectedRange;
+  for (NSNumber *type in candidates) {
+    StyleBase *style = stylesDict[type];
+    if (style == nil)
+      continue;
+    if ([style detect:range])
+      return style;
+  }
+  return nil;
+}
+
+- (void)indentListAtSelection {
+  StyleBase *style = [self activeListStyleForCurrentSelection];
+  if (style == nil)
+    return;
+
+  NSRange range = textView.selectedRange;
+  NSUInteger probe = range.location;
+  if (probe >= textView.textStorage.length && probe > 0)
+    probe--;
+  NSInteger depth = [style depthAtLocation:probe];
+  // Cap matches the keyboard handler so the JS command and Tab key behave
+  // identically.
+  if (depth >= 4)
+    return;
+
+  [style indent:range];
+  // Sync typing attrs to the new paragraph state — see comment on the helper.
+  [textView katavSyncTypingAttributesToCurrentParagraph];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)outdentListAtSelection {
+  StyleBase *style = [self activeListStyleForCurrentSelection];
+  if (style == nil)
+    return;
+
+  NSRange range = textView.selectedRange;
+  NSUInteger probe = range.location;
+  if (probe >= textView.textStorage.length && probe > 0)
+    probe--;
+  NSInteger depth = [style depthAtLocation:probe];
+
+  if (depth <= 0) {
+    // Same as Shift-Tab at depth 0: collapse out of the list entirely.
+    [style remove:range withDirtyRange:YES];
+  } else {
+    [style outdent:range];
+  }
+  [textView katavSyncTypingAttributesToCurrentParagraph];
+  [self anyTextMayHaveBeenModified];
 }
 
 - (void)addLinkAt:(NSInteger)start

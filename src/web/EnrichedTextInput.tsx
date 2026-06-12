@@ -336,6 +336,12 @@ export const EnrichedTextInput = ({
         runFocused(editor, (c) => c.toggleUnorderedList()),
       toggleCheckboxList: (checked: boolean) =>
         runFocused(editor, (c) => c.toggleCheckboxList(checked)),
+      // Indent/outdent are native-only features in v0.8 of this fork — the
+      // TipTap web fallback would need its own list-nesting commands which
+      // it doesn't ship. No-op on web so the type contract is preserved
+      // without misleading users into thinking it'll work in the browser.
+      indentList: () => {},
+      outdentList: () => {},
       setLink: (start: number, end: number, text: string, url: string) =>
         setLink(editor, start, end, text, url),
       removeLink: (start: number, end: number) =>
@@ -395,7 +401,14 @@ export const EnrichedTextInput = ({
       <EditorContent
         editor={editor}
         className="eti-editor"
-        style={finalStyle}
+        // Cast to bypass a csstype version mismatch between this fork's
+        // hoisted node_modules and the consuming monorepo's. The runtime
+        // shape is identical (both csstype 3.x); only the structural type
+        // identity differs and React.CSSProperties has the same problem.
+        // Safe to widen — only the web fallback uses this path, the React
+        // Native mobile build doesn't touch it.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        style={finalStyle as any}
         data-placeholder={placeholder}
       />
     </>

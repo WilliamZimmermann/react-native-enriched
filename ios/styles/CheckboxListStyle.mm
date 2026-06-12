@@ -27,24 +27,33 @@
 }
 
 - (void)applyStyling:(NSRange)range {
-  CGFloat listHeadIndent = [self.host.config checkboxListMarginLeft] +
-                           [self.host.config checkboxListGapWidth] +
-                           [self.host.config checkboxListBoxSize];
+  CGFloat unit = [self.host.config checkboxListMarginLeft] +
+                 [self.host.config checkboxListGapWidth] +
+                 [self.host.config checkboxListBoxSize];
+
+  NSString *value = [self getValue];
+  NSString *prefix = [self getMarkerPrefix];
 
   [self.host.textView.textStorage
       enumerateAttribute:NSParagraphStyleAttributeName
                  inRange:range
                  options:0
-              usingBlock:^(id _Nullable value, NSRange range,
+              usingBlock:^(id _Nullable existingValue, NSRange subRange,
                            BOOL *_Nonnull stop) {
                 NSMutableParagraphStyle *pStyle =
-                    [(NSParagraphStyle *)value mutableCopy];
+                    [(NSParagraphStyle *)existingValue mutableCopy];
+                NSInteger family =
+                    [TextListsUtils familyCountForValue:value
+                                                 prefix:prefix
+                                                inArray:pStyle.textLists];
+                NSInteger depth = family > 0 ? family - 1 : 0;
+                CGFloat listHeadIndent = unit * (depth + 1);
                 pStyle.headIndent = listHeadIndent;
                 pStyle.firstLineHeadIndent = listHeadIndent;
                 [self.host.textView.textStorage
                     addAttribute:NSParagraphStyleAttributeName
                            value:pStyle
-                           range:range];
+                           range:subRange];
               }];
 }
 
@@ -83,13 +92,20 @@
 
 // During dirty range re-application the default add: would use getValue
 // (EnrichedCheckbox0) and lose the checked state. Instead, read the original
-// marker format from the saved StylePair
+// marker format from the saved StylePair. Also re-pad the nesting depth —
+// see StyleBase padListDepthInRange: for why a single add: alone leaves
+// indented items stranded at depth 0.
 - (void)reapplyFromStylePair:(StylePair *)pair {
   NSRange range = [pair.rangeValue rangeValue];
   NSParagraphStyle *savedPStyle = (NSParagraphStyle *)pair.styleValue;
   BOOL checked = [TextListsUtils textLists:savedPStyle.textLists
                              containsValue:@"EnrichedCheckbox1"];
   [self addWithChecked:checked range:range withTyping:NO withDirtyRange:NO];
+  [self
+      padListDepthInRange:range
+            fromStylePair:pair
+                    value:checked ? @"EnrichedCheckbox1" : @"EnrichedCheckbox0"
+                   prefix:[self getMarkerPrefix]];
 }
 
 - (void)toggleCheckedAt:(NSUInteger)location
@@ -129,6 +145,18 @@
 
   return [TextListsUtils textLists:style.textLists
                      containsValue:@"EnrichedCheckbox1"];
+}
+
+- (void)indent:(NSRange)range {
+  [self indentList:range];
+}
+
+- (void)outdent:(NSRange)range {
+  [self outdentList:range];
+}
+
+- (NSInteger)depthAtLocation:(NSUInteger)location {
+  return [self depthForLocation:location];
 }
 
 - (BOOL)handleNewlinesInRange:(NSRange)range replacementText:(NSString *)text {

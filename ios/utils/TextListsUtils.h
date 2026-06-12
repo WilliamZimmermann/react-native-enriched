@@ -37,4 +37,34 @@
     firstTextListWithPrefix:(NSString *_Nullable)prefix
                     inArray:(NSArray<NSTextList *> *_Nullable)textLists;
 
+// Number of NSTextList entries that belong to the same list family as
+// (value, prefix). Family match uses prefix if non-nil (e.g. all "Enriched
+// Checkbox*" variants count as one family), otherwise exact value match.
+// Depth of a list item = familyCount - 1 (a freshly added list has count 1,
+// depth 0). Returns 0 when the paragraph is not in that family at all.
++ (NSInteger)familyCountForValue:(NSString *_Nonnull)value
+                          prefix:(NSString *_Nullable)prefix
+                         inArray:(NSArray<NSTextList *> *_Nullable)existing;
+
+// Appends one more NSTextList to the array IF the paragraph is already in
+// the (value, prefix) family — i.e. raises the nesting depth by one. The
+// pushed entry clones the existing family entry's markerFormat (so checkbox
+// state, marker variants, etc. round-trip). No-op if not already in the
+// family. Use this to implement Tab-indent inside a list.
++ (NSArray<NSTextList *> *_Nonnull)
+    textListsByIncreasingDepthForValue:(NSString *_Nonnull)value
+                                prefix:(NSString *_Nullable)prefix
+                               inArray:
+                                   (NSArray<NSTextList *> *_Nullable)existing;
+
+// Removes the LAST NSTextList from the array that belongs to the (value,
+// prefix) family — lowering the nesting depth by one. When that pop drops
+// the family count to zero, the paragraph leaves the list entirely. Use this
+// to implement Shift-Tab inside a list.
++ (NSArray<NSTextList *> *_Nonnull)
+    textListsByDecreasingDepthForValue:(NSString *_Nonnull)value
+                                prefix:(NSString *_Nullable)prefix
+                               inArray:
+                                   (NSArray<NSTextList *> *_Nullable)existing;
+
 @end

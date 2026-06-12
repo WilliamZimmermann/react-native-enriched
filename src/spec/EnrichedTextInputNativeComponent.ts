@@ -446,6 +446,8 @@ interface NativeCommands {
     viewRef: React.ElementRef<ComponentType>,
     checked: boolean
   ) => void;
+  indentList: (viewRef: React.ElementRef<ComponentType>) => void;
+  outdentList: (viewRef: React.ElementRef<ComponentType>) => void;
   addLink: (
     viewRef: React.ElementRef<ComponentType>,
     start: Int32,
@@ -509,6 +511,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'toggleOrderedList',
     'toggleUnorderedList',
     'toggleCheckboxList',
+    'indentList',
+    'outdentList',
     'addLink',
     'removeLink',
     'addImage',

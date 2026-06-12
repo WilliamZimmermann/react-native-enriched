@@ -439,6 +439,13 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   toggleOrderedList: () => void;
   toggleUnorderedList: () => void;
   toggleCheckboxList: (checked: boolean) => void;
+  /** Raise the nesting depth of the list item containing the caret by one
+   *  level. No-op outside a list and at the configured maximum depth. */
+  indentList: () => void;
+  /** Lower the nesting depth of the list item containing the caret by one
+   *  level. At depth 0 the item leaves the list (becomes a plain paragraph),
+   *  consistent with how Enter on an empty list item collapses the list. */
+  outdentList: () => void;
   setLink: (start: number, end: number, text: string, url: string) => void;
   removeLink: (start: number, end: number) => void;
   setImage: (src: string, width: number, height: number) => void;

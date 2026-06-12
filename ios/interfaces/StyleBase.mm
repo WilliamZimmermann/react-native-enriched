@@ -276,4 +276,195 @@
   return entry;
 }
 
+// List-nesting hooks — default no-ops. UL / OL / Checkbox override these.
+- (void)indent:(NSRange)range {
+}
+
+- (void)outdent:(NSRange)range {
+}
+
+- (NSInteger)depthAtLocation:(NSUInteger)location {
+  return -1;
+}
+
+// Shared list-nesting implementation. List style subclasses override
+// indent:/outdent:/depthAtLocation: with one-liners that forward to these
+// helpers. The work is identical across UL/OL/Checkbox apart from the
+// (value, prefix) pair that identifies the family — already exposed via
+// getValue/getMarkerPrefix — so this lives here to keep the subclasses thin.
+
+// Mutate every paragraph intersecting `range`: applies `transform` to its
+// `pStyle.textLists` and writes it back. Marks the range dirty so applyStyling
+// runs again (so headIndent picks up the new depth).
+//
+// IMPORTANT: collect all (subRange, newPStyle) tuples inside the enumerate
+// block and only write attributes after the enumeration completes. Calling
+// `addAttribute:` from inside `enumerateAttribute:usingBlock:` is "may
+// invalidate the enumeration" per Apple's docs — and in practice the second
+// observed pass starts from the already-mutated pStyle, so a non-idempotent
+// transform like `textListsByIncreasingDepth` pushes an extra entry. The
+// symptom is depth advancing by 2 (or more) per Tab. Collect-then-apply
+// keeps the enumeration's view of the storage stable.
+- (void)mutateListsInRange:(NSRange)range
+           withFamilyValue:(NSString *)value
+                    prefix:(NSString *)prefix
+                 transform:(NSArray<NSTextList *> * (^)(
+                               NSArray<NSTextList *> *existing))transform {
+  NSRange paragraphRange = [self actualUsedRange:range];
+
+  NSMutableArray<NSValue *> *subRanges = [NSMutableArray array];
+  NSMutableArray<NSMutableParagraphStyle *> *newStyles = [NSMutableArray array];
+
+  [self.host.textView.textStorage
+      enumerateAttribute:NSParagraphStyleAttributeName
+                 inRange:paragraphRange
+                 options:0
+              usingBlock:^(id _Nullable existingValue, NSRange subRange,
+                           BOOL *_Nonnull stop) {
+                NSMutableParagraphStyle *pStyle =
+                    [(NSParagraphStyle *)existingValue mutableCopy];
+                if (pStyle == nullptr)
+                  return;
+                pStyle.textLists = transform(pStyle.textLists);
+                [subRanges addObject:[NSValue valueWithRange:subRange]];
+                [newStyles addObject:pStyle];
+              }];
+
+  for (NSUInteger i = 0; i < subRanges.count; i++) {
+    [self.host.textView.textStorage addAttribute:NSParagraphStyleAttributeName
+                                           value:newStyles[i]
+                                           range:[subRanges[i] rangeValue]];
+  }
+
+  [self.host.attributesManager addDirtyRange:paragraphRange];
+}
+
+- (void)indentList:(NSRange)range {
+  NSString *value = [self getValue];
+  NSString *prefix = [self getMarkerPrefix];
+  [self mutateListsInRange:range
+           withFamilyValue:value
+                    prefix:prefix
+                 transform:^NSArray<NSTextList *> *(
+                     NSArray<NSTextList *> *existing) {
+                   return [TextListsUtils
+                       textListsByIncreasingDepthForValue:value
+                                                   prefix:prefix
+                                                  inArray:existing];
+                 }];
+}
+
+- (void)outdentList:(NSRange)range {
+  NSString *value = [self getValue];
+  NSString *prefix = [self getMarkerPrefix];
+  [self mutateListsInRange:range
+           withFamilyValue:value
+                    prefix:prefix
+                 transform:^NSArray<NSTextList *> *(
+                     NSArray<NSTextList *> *existing) {
+                   return [TextListsUtils
+                       textListsByDecreasingDepthForValue:value
+                                                   prefix:prefix
+                                                  inArray:existing];
+                 }];
+}
+
+- (NSInteger)depthForLocation:(NSUInteger)location {
+  if (location >= self.host.textView.textStorage.length)
+    return -1;
+
+  NSParagraphStyle *pStyle =
+      [self.host.textView.textStorage attribute:NSParagraphStyleAttributeName
+                                        atIndex:location
+                                 effectiveRange:NULL];
+  if (pStyle == nullptr)
+    return -1;
+
+  NSInteger family = [TextListsUtils familyCountForValue:[self getValue]
+                                                  prefix:[self getMarkerPrefix]
+                                                 inArray:pStyle.textLists];
+  return family == 0 ? -1 : family - 1;
+}
+
+// Restore nesting depth lost by InputAttributesManager's dirty-range cycle.
+// The cycle saves the paragraph style (with its full textLists array) to a
+// StylePair, then resets all attributes in the dirty range, then re-applies
+// styles via `reapplyFromStylePair:`. The default `reapplyFromStylePair:`
+// calls `add:` once, which only inserts one NSTextList because
+// `textListsByAdding` dedups. With nested lists the second-and-deeper
+// entries get dropped and depth visually snaps back to 0 on the first edit.
+// This helper restores by pushing additional family entries (via
+// textListsByIncreasingDepth) until the count matches the saved pStyle.
+- (void)padListDepthInRange:(NSRange)range
+              fromStylePair:(StylePair *)pair
+                      value:(NSString *)value
+                     prefix:(NSString *)prefix {
+  NSParagraphStyle *savedPStyle = (NSParagraphStyle *)pair.styleValue;
+  NSInteger savedFamily =
+      [TextListsUtils familyCountForValue:value
+                                   prefix:prefix
+                                  inArray:savedPStyle.textLists];
+  if (savedFamily <= 1)
+    return;
+
+  // Idempotent set-to-target. Earlier implementation pushed `savedFamily-1`
+  // additional entries which broke when the pad ran more than once for the
+  // same range, or when other paragraph-style reapplies ran before it. The
+  // overall family count would drift up by extra entries each call.
+  //
+  // Instead, normalize: filter out all current family entries, then re-add
+  // exactly `savedFamily` copies. Calling this once or N times produces the
+  // same final family count (= savedFamily).
+  //
+  // Preserve the saved markerFormat for prefix-style families (e.g. checkbox
+  // checked/unchecked state) so depth restore doesn't flip the checked bit.
+  NSString *familyMarker = value;
+  if (prefix != nil) {
+    NSTextList *savedFirst =
+        [TextListsUtils firstTextListWithPrefix:prefix
+                                        inArray:savedPStyle.textLists];
+    if (savedFirst != nil)
+      familyMarker = savedFirst.markerFormat;
+  }
+
+  NSMutableArray<NSValue *> *subRanges = [NSMutableArray array];
+  NSMutableArray<NSMutableParagraphStyle *> *newStyles = [NSMutableArray array];
+
+  [self.host.textView.textStorage
+      enumerateAttribute:NSParagraphStyleAttributeName
+                 inRange:range
+                 options:0
+              usingBlock:^(id _Nullable existing, NSRange subRange,
+                           BOOL *_Nonnull stop) {
+                NSMutableParagraphStyle *pStyle =
+                    [(NSParagraphStyle *)existing mutableCopy];
+                if (pStyle == nullptr)
+                  return;
+
+                NSMutableArray<NSTextList *> *normalized =
+                    [NSMutableArray array];
+                for (NSTextList *l in pStyle.textLists) {
+                  NSString *fmt = l.markerFormat;
+                  BOOL inFamily = (prefix != nil) ? [fmt hasPrefix:prefix]
+                                                  : [fmt isEqualToString:value];
+                  if (!inFamily)
+                    [normalized addObject:l];
+                }
+                for (NSInteger i = 0; i < savedFamily; i++) {
+                  [normalized addObject:[[NSTextList alloc]
+                                            initWithMarkerFormat:familyMarker
+                                                         options:0]];
+                }
+                pStyle.textLists = normalized;
+                [subRanges addObject:[NSValue valueWithRange:subRange]];
+                [newStyles addObject:pStyle];
+              }];
+
+  for (NSUInteger i = 0; i < subRanges.count; i++) {
+    [self.host.textView.textStorage addAttribute:NSParagraphStyleAttributeName
+                                           value:newStyles[i]
+                                           range:[subRanges[i] rangeValue]];
+  }
+}
+
 @end
