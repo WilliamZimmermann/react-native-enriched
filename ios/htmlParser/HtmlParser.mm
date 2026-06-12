@@ -7,6 +7,7 @@
 #import "StringExtension.h"
 #import "StyleHeaders.h"
 #import "StylePair.h"
+#import "TextListsUtils.h"
 
 #include "GumboParser.hpp"
 
@@ -16,6 +17,70 @@
   return [tagName isEqualToString:@"ul"] || [tagName isEqualToString:@"ol"] ||
          [tagName isEqualToString:@"blockquote"] ||
          [tagName isEqualToString:@"codeblock"];
+}
+
+// Family-count - 1 for the (value, prefix) list family at `location`. 0 when
+// the paragraph isn't in that family or has just one entry. Used by
+// dataDepthSuffixForLocation: to emit `data-depth="N"` on serialized <li>
+// tags so nested-list depth survives HTML round-trips (e.g. font swap →
+// rebuild path in EnrichedTextInputView).
++ (NSInteger)listDepthAtLocation:(NSInteger)location
+                            host:(id<EnrichedViewHost>)host
+                           value:(NSString *)value
+                          prefix:(NSString *)prefix {
+  NSTextStorage *ts = host.textView.textStorage;
+  if (location < 0 || (NSUInteger)location >= ts.length) {
+    return 0;
+  }
+  NSParagraphStyle *pStyle = [ts attribute:NSParagraphStyleAttributeName
+                                   atIndex:location
+                            effectiveRange:nil];
+  if (pStyle == nil) {
+    return 0;
+  }
+  NSInteger count = [TextListsUtils familyCountForValue:value
+                                                 prefix:prefix
+                                                inArray:pStyle.textLists];
+  return count > 0 ? count - 1 : 0;
+}
+
++ (NSString *)dataDepthSuffixForLocation:(NSInteger)location
+                                    host:(id<EnrichedViewHost>)host
+                                   value:(NSString *)value
+                                  prefix:(NSString *)prefix {
+  NSInteger d = [self listDepthAtLocation:location
+                                     host:host
+                                    value:value
+                                   prefix:prefix];
+  return d > 0 ? [NSString stringWithFormat:@" data-depth=\"%ld\"", (long)d]
+               : @"";
+}
+
+// Parses N from a tag-params string like `data-depth="N"`. Returns 0 when the
+// attribute is absent or malformed. We accept it on <li> only; the input HTML
+// parser stores (charLocation, depth) and replays them after styles via
+// applyProcessedListDepths: so the depth survives the round-trip.
++ (NSInteger)parseDataDepthFromParams:(NSString *)params {
+  if (params.length == 0) {
+    return 0;
+  }
+  NSRange keyRange = [params rangeOfString:@"data-depth=\""];
+  if (keyRange.location == NSNotFound) {
+    return 0;
+  }
+  NSUInteger valueStart = keyRange.location + keyRange.length;
+  if (valueStart >= params.length) {
+    return 0;
+  }
+  NSRange searchRange = NSMakeRange(valueStart, params.length - valueStart);
+  NSRange endQuote = [params rangeOfString:@"\"" options:0 range:searchRange];
+  if (endQuote.location == NSNotFound) {
+    return 0;
+  }
+  NSString *valueStr =
+      [params substringWithRange:NSMakeRange(valueStart,
+                                             endQuote.location - valueStart)];
+  return [valueStr integerValue];
 }
 
 /**
@@ -421,6 +486,11 @@
   NSMutableDictionary *checkboxStates = [[NSMutableDictionary alloc] init];
   NSMutableArray<AlignmentEntry *> *foundAlignments =
       [[NSMutableArray alloc] init];
+  // Entries: @{ @"loc": @(charLocation), @"depth": @(N) } for each <li> with
+  // a non-zero data-depth attribute. InputHtmlParser replays them after styles
+  // to restore nested list depth across HTML round-trips.
+  NSMutableArray<NSDictionary *> *foundListDepths =
+      [[NSMutableArray alloc] init];
   BOOL insideCheckboxList = NO;
   NSInteger precedingImageCount = 0;
   BOOL insideTag = NO;
@@ -472,6 +542,17 @@
           if (insideCheckboxList) {
             BOOL isChecked = [currentTagParams containsString:@"checked"];
             checkboxStates[@(plainText.length)] = @(isChecked);
+          }
+          // Capture nested-list depth if the serializer recorded it. We can't
+          // apply it here because the surrounding <ul>/<ol> style only gets
+          // applied once over the whole list range — replaying these after
+          // styles lifts each item's depth via textListsByIncreasingDepth.
+          NSInteger liDepth = [self parseDataDepthFromParams:currentTagParams];
+          if (liDepth > 0) {
+            [foundListDepths addObject:@{
+              @"loc" : @(plainText.length),
+              @"depth" : @(liDepth),
+            }];
           }
           // Record the start location so we can check if it's empty when
           // closing
@@ -828,7 +909,7 @@
     [processedStyles addObject:styleArr];
   }
 
-  return @[ plainText, processedStyles, foundAlignments ];
+  return @[ plainText, processedStyles, foundAlignments, foundListDepths ];
 }
 
 + (NSString *)parseToHtmlFromRange:(NSRange)range
@@ -890,7 +971,13 @@
           OrderedListStyle *oStyle = host.stylesDict[@(OrderedList)];
           BOOL detected = [oStyle detect:NSMakeRange(currentRange.location, 0)];
           if (detected) {
-            [result appendString:@"\n<li></li>"];
+            NSString *suffix =
+                [self dataDepthSuffixForLocation:currentRange.location
+                                            host:host
+                                           value:@"EnrichedOrderedList"
+                                          prefix:nil];
+            [result appendString:[NSString stringWithFormat:@"\n<li%@></li>",
+                                                            suffix]];
           } else {
             [result appendString:@"\n</ol>\n<br>"];
             inOrderedList = NO;
@@ -899,7 +986,13 @@
           UnorderedListStyle *uStyle = host.stylesDict[@(UnorderedList)];
           BOOL detected = [uStyle detect:NSMakeRange(currentRange.location, 0)];
           if (detected) {
-            [result appendString:@"\n<li></li>"];
+            NSString *suffix =
+                [self dataDepthSuffixForLocation:currentRange.location
+                                            host:host
+                                           value:@"EnrichedUnorderedList"
+                                          prefix:nil];
+            [result appendString:[NSString stringWithFormat:@"\n<li%@></li>",
+                                                            suffix]];
           } else {
             [result appendString:@"\n</ul>\n<br>"];
             inUnorderedList = NO;
@@ -930,11 +1023,15 @@
               [cbLStyle detect:NSMakeRange(currentRange.location, 0)];
           if (detected) {
             BOOL checked = [cbLStyle getCheckboxStateAt:currentRange.location];
-            if (checked) {
-              [result appendString:@"\n<li checked></li>"];
-            } else {
-              [result appendString:@"\n<li></li>"];
-            }
+            NSString *suffix =
+                [self dataDepthSuffixForLocation:currentRange.location
+                                            host:host
+                                           value:@"EnrichedCheckbox0"
+                                          prefix:@"EnrichedCheckbox"];
+            NSString *checkedAttr = checked ? @" checked" : @"";
+            [result
+                appendString:[NSString stringWithFormat:@"\n<li%@%@></li>",
+                                                        checkedAttr, suffix]];
           } else {
             [result appendString:@"\n</ul>\n<br>"];
             inCheckboxList = NO;
@@ -1395,17 +1492,28 @@
     return [NSString stringWithFormat:@"h6%@", cssStyleString];
   } else if ([style isEqualToNumber:@([UnorderedListStyle getType])] ||
              [style isEqualToNumber:@([OrderedListStyle getType])]) {
+    if (openingTag) {
+      NSString *value = [style isEqualToNumber:@([UnorderedListStyle getType])]
+                            ? @"EnrichedUnorderedList"
+                            : @"EnrichedOrderedList";
+      NSString *suffix = [self dataDepthSuffixForLocation:location
+                                                     host:host
+                                                    value:value
+                                                   prefix:nil];
+      return [NSString stringWithFormat:@"li%@", suffix];
+    }
     return @"li";
   } else if ([style isEqualToNumber:@([CheckboxListStyle getType])]) {
     if (openingTag) {
       CheckboxListStyle *checkboxListStyleClass =
           (CheckboxListStyle *)host.stylesDict[@([CheckboxListStyle getType])];
       BOOL checked = [checkboxListStyleClass getCheckboxStateAt:location];
-
-      if (checked) {
-        return @"li checked";
-      }
-      return @"li";
+      NSString *suffix = [self dataDepthSuffixForLocation:location
+                                                     host:host
+                                                    value:@"EnrichedCheckbox0"
+                                                   prefix:@"EnrichedCheckbox"];
+      NSString *checkedAttr = checked ? @" checked" : @"";
+      return [NSString stringWithFormat:@"li%@%@", checkedAttr, suffix];
     } else {
       return @"li";
     }
