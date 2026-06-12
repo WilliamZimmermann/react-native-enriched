@@ -2,6 +2,7 @@
 #import "AlignmentUtils.h"
 #import "EnrichedTextInputView.h"
 #import "HtmlParser.h"
+#import "LinkData.h"
 #import "StringExtension.h"
 #import "StyleHeaders.h"
 #import "TextInsertionUtils.h"
@@ -14,7 +15,40 @@
 // then back). 5 levels covers any realistic outline.
 static const NSInteger kEnrichedListMaxDepth = 4;
 
+// Mirrors the file-scope statics in LinkStyle.mm. Re-declared here so the
+// long-press gesture handler can read the per-character link attribute
+// without exposing them through a shared header. Keep these in lockstep
+// with LinkStyle.mm if either side ever renames.
+static NSString *const kKatavManualLinkAttr = @"EnrichedManualLink";
+static NSString *const kKatavAutomaticLinkAttr = @"EnrichedAutomaticLink";
+
+// Hold-to-open duration for links inside the editor. Apple's text-selection
+// loupe fires at ~0.5s, so picking 1.0s here keeps the system gesture
+// undisturbed for non-link presses and surfaces our handler only after the
+// user has clearly indicated intent. Bump if accidental opens become a
+// complaint, drop if users say it's sluggish.
+static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
+
 @implementation EnrichedInputTextView
+
+// Install our long-press gesture exactly once. EnrichedTextInputView allocs
+// us via `[[EnrichedInputTextView alloc] init]` (no nibs), so this routes
+// through UITextView's bare-init path which lands here with frame=zero +
+// nil text container. cancelsTouchesInView=NO so the system text-selection
+// machinery (loupe, caret placement) keeps running underneath.
+- (instancetype)initWithFrame:(CGRect)frame
+                textContainer:(NSTextContainer *)textContainer {
+  self = [super initWithFrame:frame textContainer:textContainer];
+  if (self != nil) {
+    UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc]
+        initWithTarget:self
+                action:@selector(katavHandleLinkLongPress:)];
+    lp.minimumPressDuration = kKatavLinkLongPressDuration;
+    lp.cancelsTouchesInView = NO;
+    [self addGestureRecognizer:lp];
+  }
+  return self;
+}
 
 - (void)layoutSubviews {
   [super layoutSubviews];
@@ -399,6 +433,49 @@ static const NSInteger kEnrichedListMaxDepth = 4;
 
 - (void)katavHandleShiftTab:(UIKeyCommand *)cmd {
   [self katavApplyListIndentDelta:-1];
+}
+
+// Long-press-to-open. Fires once when the user has been holding for the
+// configured duration (1.0s) — we only act on the .began transition so
+// repeated .changed events from finger drift don't re-open the URL. We
+// honour both manual and automatic link attributes (the second one is
+// applied by the regex auto-detect path on iOS). Anything we can't pass
+// to UIApplication.openURL: (malformed, unknown scheme) is dropped
+// silently — a broken link shouldn't surface a system alert.
+- (void)katavHandleLinkLongPress:(UILongPressGestureRecognizer *)g {
+  if (g.state != UIGestureRecognizerStateBegan) {
+    return;
+  }
+  CGPoint loc = [g locationInView:self];
+  UITextPosition *pos = [self closestPositionToPoint:loc];
+  if (pos == nil) {
+    return;
+  }
+  NSInteger idx = [self offsetFromPosition:self.beginningOfDocument
+                                toPosition:pos];
+  if (idx < 0 || (NSUInteger)idx >= self.textStorage.length) {
+    return;
+  }
+  LinkData *link = [self.textStorage attribute:kKatavManualLinkAttr
+                                       atIndex:(NSUInteger)idx
+                                effectiveRange:nullptr];
+  if (link == nil) {
+    link = [self.textStorage attribute:kKatavAutomaticLinkAttr
+                               atIndex:(NSUInteger)idx
+                        effectiveRange:nullptr];
+  }
+  if (link == nil || link.url.length == 0) {
+    return;
+  }
+  NSURL *url = [NSURL URLWithString:link.url];
+  if (url == nil) {
+    return;
+  }
+  UIApplication *app = [UIApplication sharedApplication];
+  if (![app canOpenURL:url]) {
+    return;
+  }
+  [app openURL:url options:@{} completionHandler:nil];
 }
 
 // delta: +1 = indent, -1 = outdent. No-op outside a list (the key command
