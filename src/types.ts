@@ -370,6 +370,11 @@ export interface OnChangeStateEvent {
     isConflicting: boolean;
     isBlocking: boolean;
   };
+  highlight: {
+    isActive: boolean;
+    isConflicting: boolean;
+    isBlocking: boolean;
+  };
   alignment: string;
 }
 
@@ -426,6 +431,8 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   focus: () => void;
   blur: () => void;
   setValue: (value: string) => void;
+  /** Insert / replace plain text at the current selection (or caret). */
+  insertText: (text: string) => void;
   setSelection: (start: number, end: number) => void;
   getHTML: () => Promise<string>;
 
@@ -530,6 +537,10 @@ export interface EnrichedTextInputProps extends Omit<ViewProps, 'children'> {
    */
   onPasteImages?: (e: NativeSyntheticEvent<OnPasteImagesEvent>) => void;
   contextMenuItems?: ContextMenuItem[];
+  /** When true, suppress the native iOS edit menu (Cut/Copy/Paste/Look Up) on
+   *  text selection. Set this when rendering your own selection toolbar so the
+   *  user doesn't see two overlapping menus. */
+  disableNativeSelectionMenu?: boolean;
   textShortcuts?: TextShortcut[];
   /**
    * If true, Android will use experimental synchronous events.

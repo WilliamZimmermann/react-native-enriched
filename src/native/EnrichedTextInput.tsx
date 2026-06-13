@@ -77,6 +77,7 @@ export const EnrichedTextInput = ({
   returnKeyLabel,
   submitBehavior,
   contextMenuItems,
+  disableNativeSelectionMenu,
   textShortcuts = ENRICHED_TEXT_INPUT_DEFAULT_PROPS.textShortcuts,
   androidExperimentalSynchronousEvents = ENRICHED_TEXT_INPUT_DEFAULT_PROPS.androidExperimentalSynchronousEvents,
   useHtmlNormalizer = ENRICHED_TEXT_INPUT_DEFAULT_PROPS.useHtmlNormalizer,
@@ -182,6 +183,9 @@ export const EnrichedTextInput = ({
     },
     setValue: (value: string) => {
       Commands.setValue(nullthrows(nativeRef.current), value);
+    },
+    insertText: (text: string) => {
+      Commands.insertText(nullthrows(nativeRef.current), text);
     },
     getHTML: () => {
       return new Promise<string>((resolve, reject) => {
@@ -368,6 +372,7 @@ export const EnrichedTextInput = ({
       onRequestHtmlResult={handleRequestHtmlResult}
       onInputKeyPress={onKeyPress}
       contextMenuItems={nativeContextMenuItems}
+      disableNativeSelectionMenu={disableNativeSelectionMenu}
       textShortcuts={textShortcuts}
       onContextMenuItemPress={handleContextMenuItemPress}
       onSubmitEditing={onSubmitEditing}

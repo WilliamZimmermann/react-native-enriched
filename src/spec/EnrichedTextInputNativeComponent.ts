@@ -123,6 +123,11 @@ export interface OnChangeStateEvent {
     isConflicting: boolean;
     isBlocking: boolean;
   };
+  highlight: {
+    isActive: boolean;
+    isConflicting: boolean;
+    isBlocking: boolean;
+  };
   alignment: string;
 }
 
@@ -286,6 +291,11 @@ export interface OnContextMenuItemPressEvent {
       isConflicting: boolean;
       isBlocking: boolean;
     };
+    highlight: {
+      isActive: boolean;
+      isConflicting: boolean;
+      isBlocking: boolean;
+    };
     alignment: string;
   };
 }
@@ -379,6 +389,10 @@ export interface NativeProps extends ViewProps {
   scrollEnabled?: boolean;
   linkRegex?: LinkNativeRegex;
   contextMenuItems?: ReadonlyArray<Readonly<ContextMenuItemConfig>>;
+  // When true, suppress the native iOS edit menu (Cut/Copy/Paste/Look Up) on
+  // text selection. Consumers that render their own selection toolbar set this
+  // so the user doesn't see two overlapping menus.
+  disableNativeSelectionMenu?: boolean;
   textShortcuts: ReadonlyArray<Readonly<TextShortcut>>;
   returnKeyType?: string;
   returnKeyLabel?: string;
@@ -427,6 +441,8 @@ interface NativeCommands {
   focus: (viewRef: React.ElementRef<ComponentType>) => void;
   blur: (viewRef: React.ElementRef<ComponentType>) => void;
   setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
+  // Insert / replace plain text at the current selection (or caret).
+  insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
   setSelection: (
     viewRef: React.ElementRef<ComponentType>,
     start: Int32,
@@ -510,6 +526,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'focus',
     'blur',
     'setValue',
+    'insertText',
     'setSelection',
 
     // Text formatting commands

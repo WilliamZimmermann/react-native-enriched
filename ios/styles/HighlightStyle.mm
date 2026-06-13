@@ -61,6 +61,29 @@
   [self.host.attributesManager addDirtyRange:range];
 }
 
+// CRITICAL: getKey is the *system* attribute NSBackgroundColorAttributeName,
+// whose value MUST be a UIColor. The InputAttributesManager dirty-range cycle
+// saves present styles (here: the UIColor, via OccurenceUtils.all), resets the
+// range, then restores each via reapplyFromStylePair:. The base implementation
+// re-adds getKey = getValue (@"AnyValue", an NSString) — fine for marker-keyed
+// styles like Bold (@"EnrichedBold"), but for us it would stamp a *string* into
+// the background-color attribute. NSLayoutManager then sends -set to that
+// string while drawing the glyph background ("-[__NSCFConstantString set]:
+// unrecognized selector"), crashing on the next draw after a highlight is
+// applied. Restore the saved UIColor instead, mirroring
+// Link/Mention/Image/Table. No addDirtyRange: here — reapply must not re-enter
+// the cycle.
+- (void)reapplyFromStylePair:(StylePair *)pair {
+  NSRange range = [pair.rangeValue rangeValue];
+  UIColor *color = (UIColor *)pair.styleValue;
+  if (![color isKindOfClass:[UIColor class]] || range.length == 0) {
+    return;
+  }
+  [self.host.textView.textStorage addAttribute:NSBackgroundColorAttributeName
+                                         value:color
+                                         range:range];
+}
+
 - (UIColor *)getHighlightColorAt:(NSUInteger)location {
   if (location >= self.host.textView.textStorage.length) {
     return nullptr;

@@ -82,6 +82,7 @@ function buildState(
     orderedList: paragraphFormat(editor.isActive('orderedList')),
     unorderedList: paragraphFormat(editor.isActive('unorderedList')),
     checkboxList: paragraphFormat(editor.isActive('checkboxList')),
+    highlight: inlineFormat('highlight', false),
     link: inlineFormat(
       'link',
       editor.isActive('code') ||

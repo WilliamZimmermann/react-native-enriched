@@ -59,6 +59,7 @@ using namespace facebook::react;
   BOOL _emitTextChange;
   NSMutableDictionary<NSValue *, UIImageView *> *_attachmentViews;
   NSArray<NSDictionary *> *_contextMenuItems;
+  BOOL _disableNativeSelectionMenu;
   NSString *_submitBehavior;
   NSDictionary<NSAttributedStringKey, id> *_capturedAttributesBeforeChange;
   NSString *_recentlyEmittedAlignment;
@@ -873,6 +874,12 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     _contextMenuItems = [items copy];
   }
 
+  // disableNativeSelectionMenu
+  if (newViewProps.disableNativeSelectionMenu !=
+      oldViewProps.disableNativeSelectionMenu) {
+    _disableNativeSelectionMenu = newViewProps.disableNativeSelectionMenu;
+  }
+
   [super updateProps:props oldProps:oldProps];
   // run the changes callback
   [self anyTextMayHaveBeenModified];
@@ -1166,6 +1173,7 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
            .codeBlock = GET_STYLE_STATE([CodeBlockStyle getType]),
            .image = GET_STYLE_STATE([ImageStyle getType]),
            .checkboxList = GET_STYLE_STATE([CheckboxListStyle getType]),
+           .highlight = GET_STYLE_STATE([HighlightStyle getType]),
            .alignment = [currentAlignment UTF8String]});
     }
   }
@@ -1236,6 +1244,9 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"setValue"]) {
     NSString *value = (NSString *)args[0];
     [self setValue:value];
+  } else if ([commandName isEqualToString:@"insertText"]) {
+    NSString *text = (NSString *)args[0];
+    [self insertTextAtSelection:text];
   } else if ([commandName isEqualToString:@"toggleBold"]) {
     [self toggleRegularStyle:[BoldStyle getType]];
   } else if ([commandName isEqualToString:@"toggleItalic"]) {
@@ -1363,6 +1374,22 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
 
   // set selectedRange and check for changes
   textView.selectedRange = NSRange(textView.textStorage.string.length, 0);
+  [self anyTextMayHaveBeenModified];
+}
+
+// Insert / replace plain text at the current selection (or caret). Used by the
+// JS-side popover for Paste and for inserting an AI definition into the note.
+- (void)insertTextAtSelection:(NSString *)text {
+  // Empty string is allowed: replacing a non-empty selection with "" deletes
+  // it (used by Cut). Only a nil guard is needed.
+  if (text == nullptr) {
+    return;
+  }
+  [TextInsertionUtils replaceText:text
+                               at:textView.selectedRange
+             additionalAttributes:nullptr
+                             host:self
+                    withSelection:YES];
   [self anyTextMayHaveBeenModified];
 }
 
@@ -1973,6 +2000,12 @@ static UIColor *katavParseHexColor(NSString *hex) {
     editMenuForTextInRange:(NSRange)range
           suggestedActions:(NSArray<UIMenuElement *> *)suggestedActions
     API_AVAILABLE(ios(16.0)) {
+  // Consumers with their own selection toolbar suppress the native edit menu
+  // entirely so the two don't overlap. Returning an empty menu hides it.
+  if (_disableNativeSelectionMenu) {
+    return [UIMenu menuWithChildren:@[]];
+  }
+
   if (_contextMenuItems == nil || _contextMenuItems.count == 0) {
     return [UIMenu menuWithChildren:suggestedActions];
   }
@@ -2035,6 +2068,7 @@ static UIColor *katavParseHexColor(NSString *hex) {
              .image = GET_STYLE_STATE([ImageStyle getType]),
              .mention = GET_STYLE_STATE([MentionStyle getType]),
              .checkboxList = GET_STYLE_STATE([CheckboxListStyle getType]),
+             .highlight = GET_STYLE_STATE([HighlightStyle getType]),
              .alignment = [currentAlignment UTF8String]}});
   }
 }

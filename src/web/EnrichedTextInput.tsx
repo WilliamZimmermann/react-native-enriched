@@ -321,6 +321,8 @@ export const EnrichedTextInput = ({
       blur: () => editor.commands.blur(),
       setValue: (value: string) =>
         editor.commands.setContent(prepareHtmlForTiptap(value)),
+      insertText: (text: string) =>
+        runFocused(editor, (c) => c.insertContent(text)),
       setSelection: (start, end) => {
         const doc = editor.state.doc;
         runFocused(editor, (c) =>
