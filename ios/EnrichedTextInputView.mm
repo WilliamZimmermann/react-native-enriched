@@ -2181,10 +2181,10 @@ static UIColor *katavParseHexColor(NSString *hex) {
          .end = static_cast<int>(textView.selectedRange.location +
                                  textView.selectedRange.length),
          .text = [textAtSelection toCppString],
-         .rectX = static_cast<double>(selectionRect.origin.x),
-         .rectY = static_cast<double>(selectionRect.origin.y),
-         .rectWidth = static_cast<double>(selectionRect.size.width),
-         .rectHeight = static_cast<double>(selectionRect.size.height)});
+         .rectX = static_cast<Float>(selectionRect.origin.x),
+         .rectY = static_cast<Float>(selectionRect.origin.y),
+         .rectWidth = static_cast<Float>(selectionRect.size.width),
+         .rectHeight = static_cast<Float>(selectionRect.size.height)});
   }
 
   // manage selection changes
