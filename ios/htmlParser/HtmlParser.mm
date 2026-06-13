@@ -7,6 +7,7 @@
 #import "StringExtension.h"
 #import "StyleHeaders.h"
 #import "StylePair.h"
+#import "TableData.h"
 #import "TextListsUtils.h"
 
 #include "GumboParser.hpp"
@@ -479,7 +480,203 @@
   return fixedHtml;
 }
 
+// Parses <tr>/<td|th> from a raw <table> block into an array of rows, each
+// a string array of cell text. Inner markup is stripped, common entities
+// (&nbsp;, &amp;, …) decoded, internal whitespace collapsed — enough for
+// TableAttachment to render a readable preview. Rich-cell formatting
+// survives only in the rawHtml stash; we don't try to reconstruct it on
+// the way out.
++ (NSArray<NSArray<NSString *> *> *)parseTableRowsFromHtml:(NSString *)rawHtml {
+  NSMutableArray<NSArray<NSString *> *> *rows = [NSMutableArray array];
+  if (rawHtml.length == 0)
+    return rows;
+
+  NSError *trErr = nil;
+  NSRegularExpression *trRe = [NSRegularExpression
+      regularExpressionWithPattern:@"<tr\\b[^>]*>([\\s\\S]*?)</tr>"
+                           options:NSRegularExpressionCaseInsensitive
+                             error:&trErr];
+  if (trErr != nil || trRe == nil)
+    return rows;
+
+  NSError *cellErr = nil;
+  NSRegularExpression *cellRe = [NSRegularExpression
+      regularExpressionWithPattern:@"<(?:td|th)\\b[^>]*>([\\s\\S]*?)</"
+                                    "(?:td|th)>"
+                           options:NSRegularExpressionCaseInsensitive
+                             error:&cellErr];
+  if (cellErr != nil || cellRe == nil)
+    return rows;
+
+  NSError *tagsErr = nil;
+  NSRegularExpression *tagsRe =
+      [NSRegularExpression regularExpressionWithPattern:@"<[^>]+>"
+                                                options:0
+                                                  error:&tagsErr];
+  if (tagsErr != nil || tagsRe == nil)
+    return rows;
+
+  NSArray<NSTextCheckingResult *> *trMatches =
+      [trRe matchesInString:rawHtml
+                    options:0
+                      range:NSMakeRange(0, rawHtml.length)];
+  for (NSTextCheckingResult *trMatch in trMatches) {
+    NSString *trInner = [rawHtml substringWithRange:[trMatch rangeAtIndex:1]];
+    NSMutableArray<NSString *> *cells = [NSMutableArray array];
+    NSArray<NSTextCheckingResult *> *cellMatches =
+        [cellRe matchesInString:trInner
+                        options:0
+                          range:NSMakeRange(0, trInner.length)];
+    for (NSTextCheckingResult *cellMatch in cellMatches) {
+      NSString *cellInner =
+          [trInner substringWithRange:[cellMatch rangeAtIndex:1]];
+      NSString *noTags = [tagsRe
+          stringByReplacingMatchesInString:cellInner
+                                   options:0
+                                     range:NSMakeRange(0, cellInner.length)
+                              withTemplate:@""];
+      NSString *decoded = noTags;
+      decoded = [decoded stringByReplacingOccurrencesOfString:@"&nbsp;"
+                                                   withString:@" "];
+      decoded = [decoded stringByReplacingOccurrencesOfString:@"&amp;"
+                                                   withString:@"&"];
+      decoded = [decoded stringByReplacingOccurrencesOfString:@"&lt;"
+                                                   withString:@"<"];
+      decoded = [decoded stringByReplacingOccurrencesOfString:@"&gt;"
+                                                   withString:@">"];
+      decoded = [decoded stringByReplacingOccurrencesOfString:@"&quot;"
+                                                   withString:@"\""];
+      decoded = [decoded stringByReplacingOccurrencesOfString:@"&#39;"
+                                                   withString:@"'"];
+      // Collapse runs of whitespace (newlines, multiple spaces) to a
+      // single space so a multi-line cell stays on one line in the
+      // preview.
+      NSError *wsErr = nil;
+      NSRegularExpression *wsRe =
+          [NSRegularExpression regularExpressionWithPattern:@"\\s+"
+                                                    options:0
+                                                      error:&wsErr];
+      if (wsRe != nil) {
+        decoded = [wsRe
+            stringByReplacingMatchesInString:decoded
+                                     options:0
+                                       range:NSMakeRange(0, decoded.length)
+                                withTemplate:@" "];
+      }
+      decoded = [decoded stringByTrimmingCharactersInSet:
+                             [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+      [cells addObject:decoded];
+    }
+    if (cells.count > 0) {
+      [rows addObject:cells];
+    }
+  }
+  return rows;
+}
+
+// Pre-pass over the html that swaps every top-level `<table>...</table>`
+// block (depth-counted so a TipTap-pasted nested table doesn't fuse) for
+// a self-closing `<eti-table-N/>` token, and accumulates a parallel array
+// of TableData (raw HTML + parsed rows). The main parser then treats each
+// `<eti-table-N>` like `<img>`: a single style entry on a single Object
+// Replacement Character. Serializer reads the rawHtml back out.
+//
+// Why a synthetic tag rather than stuffing tables into ongoingTags or a
+// custom branch in the main loop: it isolates the table complexity to
+// this pre-pass, keeps the char-by-char machine ignorant of table
+// structure, and makes the post-pass a single regex sweep.
++ (NSString *)preprocessTablesIn:(NSString *)html
+                       collected:(NSMutableArray<TableData *> *)collected {
+  if (html.length == 0)
+    return html ?: @"";
+  NSMutableString *out = [NSMutableString string];
+  NSString *lower = [html lowercaseString];
+  NSUInteger cursor = 0;
+  while (cursor < html.length) {
+    NSRange openRange =
+        [lower rangeOfString:@"<table"
+                     options:0
+                       range:NSMakeRange(cursor, html.length - cursor)];
+    if (openRange.location == NSNotFound) {
+      [out appendString:[html substringFromIndex:cursor]];
+      break;
+    }
+    [out appendString:[html substringWithRange:NSMakeRange(cursor,
+                                                           openRange.location -
+                                                               cursor)]];
+    NSRange openTagEnd =
+        [html rangeOfString:@">"
+                    options:0
+                      range:NSMakeRange(openRange.location,
+                                        html.length - openRange.location)];
+    if (openTagEnd.location == NSNotFound) {
+      [out appendString:[html substringFromIndex:openRange.location]];
+      cursor = html.length;
+      break;
+    }
+    NSUInteger depth = 1;
+    NSUInteger scan = openTagEnd.location + 1;
+    NSRange closeRange = NSMakeRange(NSNotFound, 0);
+    while (scan < html.length) {
+      NSRange nextOpen =
+          [lower rangeOfString:@"<table"
+                       options:0
+                         range:NSMakeRange(scan, html.length - scan)];
+      NSRange nextClose =
+          [lower rangeOfString:@"</table>"
+                       options:0
+                         range:NSMakeRange(scan, html.length - scan)];
+      if (nextClose.location == NSNotFound)
+        break;
+      if (nextOpen.location != NSNotFound &&
+          nextOpen.location < nextClose.location) {
+        depth++;
+        scan = nextOpen.location + 6;
+        continue;
+      }
+      depth--;
+      if (depth == 0) {
+        closeRange = nextClose;
+        break;
+      }
+      scan = nextClose.location + 8;
+    }
+    if (closeRange.location == NSNotFound) {
+      [out appendString:[html substringFromIndex:openRange.location]];
+      cursor = html.length;
+      break;
+    }
+    NSUInteger tableEnd = closeRange.location + 8; // length of "</table>"
+    NSString *rawTable =
+        [html substringWithRange:NSMakeRange(openRange.location,
+                                             tableEnd - openRange.location)];
+
+    TableData *data = [[TableData alloc] init];
+    data.rawHtml = rawTable;
+    data.rows = [self parseTableRowsFromHtml:rawTable];
+    NSInteger colCount = 0;
+    for (NSArray<NSString *> *row in data.rows) {
+      if ((NSInteger)row.count > colCount)
+        colCount = (NSInteger)row.count;
+    }
+    data.colCount = colCount;
+    [collected addObject:data];
+    [out
+        appendFormat:@"<eti-table-%lu/>", (unsigned long)(collected.count - 1)];
+    cursor = tableEnd;
+  }
+  return out;
+}
+
 + (NSArray *_Nonnull)getTextAndStylesFromHtml:(NSString *_Nonnull)fixedHtml {
+  // Stash each <table>...</table> as TableData up front, replacing the
+  // block with a self-closing <eti-table-N/> sentinel. The main char-by-char
+  // loop then sees that token like an image and emits a single style entry
+  // pointing at the TableData by index. tagContentForStyle reverses the
+  // mapping on serialization.
+  NSMutableArray<TableData *> *collectedTables = [NSMutableArray array];
+  fixedHtml = [self preprocessTablesIn:fixedHtml collected:collectedTables];
+
   NSMutableString *plainText = [[NSMutableString alloc] initWithString:@""];
   NSMutableDictionary *ongoingTags = [[NSMutableDictionary alloc] init];
   NSMutableArray *initiallyProcessedTags = [[NSMutableArray alloc] init];
@@ -826,6 +1023,23 @@
       }
 
       stylePair.styleValue = imageData;
+    } else if ([tagName hasPrefix:@"eti-table-"]) {
+      // Synthetic token emitted by preprocessTablesIn:collected: for each
+      // `<table>...</table>` block in the source. The suffix is the index
+      // into `collectedTables`; we use it to attach the stashed TableData
+      // (rawHtml + parsed rows) so the input applier can render the grid
+      // and the serializer can round-trip the original markup.
+      NSString *idxStr = [tagName substringFromIndex:[@"eti-table-" length]];
+      NSInteger idx = [idxStr integerValue];
+      if (idx < 0 || idx >= (NSInteger)collectedTables.count) {
+        continue;
+      }
+      TableData *data = collectedTables[idx];
+      if (data == nullptr) {
+        continue;
+      }
+      [styleArr addObject:@([TableStyle getType])];
+      stylePair.styleValue = data;
     } else if ([tagName isEqualToString:@"u"]) {
       [styleArr addObject:@([UnderlineStyle getType])];
     } else if ([tagName isEqualToString:@"s"]) {
@@ -1079,7 +1293,8 @@
 
         // append closing tags
         for (NSNumber *style in sortedEndedStyles) {
-          if ([style isEqualToNumber:@([ImageStyle getType])]) {
+          if ([style isEqualToNumber:@([ImageStyle getType])] ||
+              [style isEqualToNumber:@([TableStyle getType])]) {
             continue;
           }
           NSString *tagContent = [self tagContentForStyle:style
@@ -1284,7 +1499,10 @@
 
       // append closing tags
       for (NSNumber *style in sortedEndedStyles) {
-        if ([style isEqualToNumber:@([ImageStyle getType])]) {
+        if ([style isEqualToNumber:@([ImageStyle getType])] ||
+            [style isEqualToNumber:@([TableStyle getType])]) {
+          // Self-closed: image's <…/> + table's full raw HTML both got
+          // emitted on the open pass.
           continue;
         }
         NSString *tagContent = [self tagContentForStyle:style
@@ -1313,6 +1531,13 @@
           [result
               appendString:[NSString stringWithFormat:@"<%@/>", tagContent]];
           [currentActiveStyles removeObject:@([ImageStyle getType])];
+        } else if ([style isEqualToNumber:@([TableStyle getType])]) {
+          // tagContentForStyle returned the FULL `<table>…</table>` HTML
+          // we stashed on parse — drop it in unwrapped (image's <…/> wrap
+          // would corrupt the markup). Pulling the active-style flag too
+          // so the closing-tag pass doesn't try to also emit `</table>`.
+          [result appendString:tagContent];
+          [currentActiveStyles removeObject:@([TableStyle getType])];
         } else {
           [result appendString:[NSString stringWithFormat:@"<%@>", tagContent]];
         }
@@ -1447,6 +1672,24 @@
         }
       }
       return @"img";
+    } else {
+      return @"";
+    }
+  } else if ([style isEqualToNumber:@([TableStyle getType])]) {
+    // The caller for TableStyle emits the returned string verbatim (no
+    // `<...>` wrap), so this branch returns the stashed full `<table>…
+    // </table>` HTML untouched. Round-trip is byte-identical when the
+    // user doesn't touch the attachment character.
+    if (openingTag) {
+      TableStyle *tableStyle =
+          (TableStyle *)host.stylesDict[@([TableStyle getType])];
+      if (tableStyle != nullptr) {
+        TableData *data = [tableStyle getTableDataAt:location];
+        if (data != nullptr && data.rawHtml.length > 0) {
+          return data.rawHtml;
+        }
+      }
+      return @"<table></table>";
     } else {
       return @"";
     }

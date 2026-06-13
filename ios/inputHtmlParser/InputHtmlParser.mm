@@ -167,6 +167,12 @@
                                          imageData:imgData
                                      withSelection:NO
                                     withDirtyRange:YES];
+      } else if ([styleType isEqualToNumber:@([TableStyle getType])]) {
+        TableData *tableData = (TableData *)stylePair.styleValue;
+        [((TableStyle *)baseStyle) addTableAtRange:styleRange
+                                         tableData:tableData
+                                     withSelection:NO
+                                    withDirtyRange:YES];
       } else if ([styleType isEqualToNumber:@([CheckboxListStyle getType])]) {
         NSDictionary *checkboxStates = (NSDictionary *)stylePair.styleValue;
         CheckboxListStyle *cbLStyle = (CheckboxListStyle *)baseStyle;

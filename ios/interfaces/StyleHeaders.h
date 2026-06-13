@@ -3,6 +3,7 @@
 #import "LinkData.h"
 #import "MentionParams.h"
 #import "StyleBase.h"
+#import "TableData.h"
 
 @interface BoldStyle : StyleBase
 @end
@@ -107,4 +108,12 @@
           withSelection:(BOOL)withSelection
          withDirtyRange:(BOOL)withDirtyRange;
 - (ImageData *)getImageDataAt:(NSUInteger)location;
+@end
+
+@interface TableStyle : StyleBase
+- (void)addTableAtRange:(NSRange)range
+              tableData:(TableData *)tableData
+          withSelection:(BOOL)withSelection
+         withDirtyRange:(BOOL)withDirtyRange;
+- (TableData *)getTableDataAt:(NSUInteger)location;
 @end

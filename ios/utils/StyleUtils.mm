@@ -139,9 +139,14 @@
     [H6Style class],          [UnorderedListStyle class],
     [OrderedListStyle class], [CheckboxListStyle class],
     [AlignmentStyle class],   [BlockQuoteStyle class],
-    [CodeBlockStyle class],   [ImageStyle class]
+    [CodeBlockStyle class],   [ImageStyle class],
+    [TableStyle class]
   ];
 
+  // No viewer counterpart for TableStyle yet — the read-only viewer flavour
+  // would need its own EnrichedTextTableStyle if we ever surface tables in
+  // that surface. Until then we reuse TableStyle in both modes; the viewer
+  // never mutates so the input class is harmless there.
   NSArray<Class> *viewerClasses = @[
     [EnrichedTextBoldStyle class],
     [EnrichedTextItalicStyle class],
@@ -162,7 +167,8 @@
     [EnrichedTextAlignmentStyle class],
     [EnrichedTextBlockQuoteStyle class],
     [EnrichedTextCodeBlockStyle class],
-    [EnrichedTextImageStyle class]
+    [EnrichedTextImageStyle class],
+    [TableStyle class]
   ];
 
   NSMutableDictionary *dict = [NSMutableDictionary new];

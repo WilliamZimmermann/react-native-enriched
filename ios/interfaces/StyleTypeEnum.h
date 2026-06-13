@@ -18,6 +18,7 @@ typedef NS_ENUM(NSInteger, StyleType) {
   Link,
   Mention,
   Image,
+  Table,
   InlineCode,
   Bold,
   Italic,
