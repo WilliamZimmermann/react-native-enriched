@@ -491,6 +491,14 @@
   // to restore nested list depth across HTML round-trips.
   NSMutableArray<NSDictionary *> *foundListDepths =
       [[NSMutableArray alloc] init];
+  // Open-list counter for inferring depth when the HTML uses nested
+  // <ul>/<ol> instead of our flat-with-data-depth shape. Web editors
+  // (TipTap especially) serialize sublists as nested tags rather than
+  // data-depth — without this, every <li> in a nested list collapses to
+  // depth 0 because applyProcessedStyles dedupes the second UL family
+  // entry. Counts all list opens equally; mixed-family (ul-inside-ol)
+  // approximates rather than tracks per-family.
+  NSInteger listNestingDepth = 0;
   BOOL insideCheckboxList = NO;
   NSInteger precedingImageCount = 0;
   BOOL insideTag = NO;
@@ -543,11 +551,17 @@
             BOOL isChecked = [currentTagParams containsString:@"checked"];
             checkboxStates[@(plainText.length)] = @(isChecked);
           }
-          // Capture nested-list depth if the serializer recorded it. We can't
-          // apply it here because the surrounding <ul>/<ol> style only gets
-          // applied once over the whole list range — replaying these after
-          // styles lifts each item's depth via textListsByIncreasingDepth.
+          // Capture nested-list depth either from our serializer's
+          // data-depth attribute or, when that's absent, from the open-list
+          // counter so HTML with native <ul>/<ol> nesting (web editors)
+          // still round-trips. The applier replays these after styles via
+          // textListsByIncreasingDepth — without the explicit depth,
+          // applyProcessedStyles would dedupe a second UL family entry and
+          // every inner <li> would collapse to depth 0.
           NSInteger liDepth = [self parseDataDepthFromParams:currentTagParams];
+          if (liDepth == 0 && listNestingDepth > 1) {
+            liDepth = listNestingDepth - 1;
+          }
           if (liDepth > 0) {
             [foundListDepths addObject:@{
               @"loc" : @(plainText.length),
@@ -599,6 +613,14 @@
             insideCheckboxList = YES;
           }
 
+          // Open-list nesting tracker — see foundListDepths init for the
+          // rationale. Both <ul> and <ol> count; checkbox-typed <ul> too
+          // (rare to nest those but the visual depth still applies).
+          if ([currentTagName isEqualToString:@"ul"] ||
+              [currentTagName isEqualToString:@"ol"]) {
+            listNestingDepth++;
+          }
+
           // skip one newline if it was added after opening tags that are in
           // separate lines
           if ([self isBlockTag:currentTagName] && i + 1 < fixedHtml.length &&
@@ -629,6 +651,14 @@
         if ([currentTagName isEqualToString:@"ul"] &&
             [self isUlCheckboxList:currentTagParams]) {
           insideCheckboxList = NO;
+        }
+
+        // Pop the open-list counter. Min-zero guarded so malformed input
+        // (extra </ul>) can't drive negative depth.
+        if ([currentTagName isEqualToString:@"ul"] ||
+            [currentTagName isEqualToString:@"ol"]) {
+          if (listNestingDepth > 0)
+            listNestingDepth--;
         }
 
         BOOL isBlockTag = [self isBlockTag:currentTagName];
