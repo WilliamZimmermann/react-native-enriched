@@ -117,3 +117,9 @@
          withDirtyRange:(BOOL)withDirtyRange;
 - (TableData *)getTableDataAt:(NSUInteger)location;
 @end
+
+@interface HighlightStyle : StyleBase
+- (void)addHighlightAtRange:(NSRange)range color:(UIColor *)color;
+- (void)removeHighlightInRange:(NSRange)range;
+- (UIColor *)getHighlightColorAt:(NSUInteger)location;
+@end

@@ -346,6 +346,11 @@ export const EnrichedTextInput = ({
         setLink(editor, start, end, text, url),
       removeLink: (start: number, end: number) =>
         removeLink(editor, start, end),
+      // Web parity stubs — the native side carries the real
+      // implementation. TipTap's Highlight extension lives in the web
+      // host app, not in this vendor wrapper.
+      setHighlight: (_start: number, _end: number, _color: string) => {},
+      removeHighlight: (_start: number, _end: number) => {},
       startMention: (indicator: string) => {
         startMention(editor, indicator, mentionIndicatorsRef.current);
       },

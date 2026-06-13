@@ -1256,6 +1256,15 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
     [self removeLinkAt:start end:end];
+  } else if ([commandName isEqualToString:@"addHighlight"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    NSString *color = (NSString *)args[2];
+    [self addHighlightAt:start end:end color:color];
+  } else if ([commandName isEqualToString:@"removeHighlight"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    [self removeHighlightAt:start end:end];
   } else if ([commandName isEqualToString:@"addMention"]) {
     NSString *indicator = (NSString *)args[0];
     NSString *text = (NSString *)args[1];
@@ -1625,6 +1634,66 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     [linkStyleClass addLink:linkData range:linkRange withSelection:YES];
     [self anyTextMayHaveBeenModified];
   }
+}
+
+// Parses a #RRGGBB hex string into a UIColor. Tolerant of an optional
+// leading '#' and case-insensitive on the hex digits; everything else
+// falls back to a transparent color so the caller's set/get round-trip
+// stays predictable.
+static UIColor *katavParseHexColor(NSString *hex) {
+  if (hex.length == 0) {
+    return [UIColor clearColor];
+  }
+  NSString *cleaned = [hex hasPrefix:@"#"] ? [hex substringFromIndex:1] : hex;
+  if (cleaned.length != 6) {
+    return [UIColor clearColor];
+  }
+  unsigned int rgb = 0;
+  NSScanner *scanner = [NSScanner scannerWithString:cleaned];
+  if (![scanner scanHexInt:&rgb]) {
+    return [UIColor clearColor];
+  }
+  CGFloat r = ((rgb >> 16) & 0xFF) / 255.0;
+  CGFloat g = ((rgb >> 8) & 0xFF) / 255.0;
+  CGFloat b = (rgb & 0xFF) / 255.0;
+  return [UIColor colorWithRed:r green:g blue:b alpha:1.0];
+}
+
+- (void)addHighlightAt:(NSInteger)start
+                   end:(NSInteger)end
+                 color:(NSString *)hexColor {
+  HighlightStyle *highlightStyle =
+      (HighlightStyle *)stylesDict[@([HighlightStyle getType])];
+  if (highlightStyle == nullptr) {
+    return;
+  }
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
+  NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
+  UIColor *color = katavParseHexColor(hexColor);
+  [highlightStyle addHighlightAtRange:range color:color];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)removeHighlightAt:(NSInteger)start end:(NSInteger)end {
+  HighlightStyle *highlightStyle =
+      (HighlightStyle *)stylesDict[@([HighlightStyle getType])];
+  if (highlightStyle == nullptr) {
+    return;
+  }
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
+  NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
+  [highlightStyle removeHighlightInRange:range];
+  [self anyTextMayHaveBeenModified];
 }
 
 - (void)removeLinkAt:(NSInteger)start end:(NSInteger)end {

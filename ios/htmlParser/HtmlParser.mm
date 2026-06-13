@@ -993,6 +993,27 @@
       [styleArr addObject:@([BoldStyle getType])];
     } else if ([tagName isEqualToString:@"i"]) {
       [styleArr addObject:@([ItalicStyle getType])];
+    } else if ([tagName isEqualToString:@"mark"]) {
+      // <mark style="background-color: #xxx;"> — TipTap's
+      // @tiptap/extension-highlight default emission. Pull the hex out
+      // of the style attribute and hand it to HighlightStyle as the
+      // styleValue. A bare <mark> (no color) falls back to yellow so
+      // the user still sees a highlight rather than nothing.
+      [styleArr addObject:@([HighlightStyle getType])];
+      NSRegularExpression *bgRegex = [NSRegularExpression
+          regularExpressionWithPattern:@"background-color\\s*:\\s*(#"
+                                        "[0-9a-fA-F]{6})"
+                               options:0
+                                 error:nullptr];
+      NSTextCheckingResult *bgMatch =
+          [bgRegex firstMatchInString:params
+                              options:0
+                                range:NSMakeRange(0, params.length)];
+      NSString *hexColor = @"#FFF176";
+      if (bgMatch != nullptr) {
+        hexColor = [params substringWithRange:[bgMatch rangeAtIndex:1]];
+      }
+      stylePair.styleValue = hexColor;
     } else if ([tagName isEqualToString:@"img"]) {
       NSRegularExpression *srcRegex =
           [NSRegularExpression regularExpressionWithPattern:@"src=\"([^\"]+)\""
@@ -1721,6 +1742,29 @@
     return @"u";
   } else if ([style isEqualToNumber:@([StrikethroughStyle getType])]) {
     return @"s";
+  } else if ([style isEqualToNumber:@([HighlightStyle getType])]) {
+    if (openingTag) {
+      // Pull the background color at this location from the textStorage
+      // and emit `<mark style="background-color:#RRGGBB;">`. Same shape
+      // TipTap's @tiptap/extension-highlight serializes to, so the web
+      // reads back a round-tripped <mark> without remapping.
+      UIColor *color =
+          [host.textView.textStorage attribute:NSBackgroundColorAttributeName
+                                       atIndex:location
+                                effectiveRange:nullptr];
+      if (color == nil) {
+        return @"mark";
+      }
+      CGFloat r = 0, g = 0, b = 0, a = 0;
+      [color getRed:&r green:&g blue:&b alpha:&a];
+      int ri = (int)round(r * 255);
+      int gi = (int)round(g * 255);
+      int bi = (int)round(b * 255);
+      return [NSString
+          stringWithFormat:@"mark style=\"background-color:#%02X%02X%02X;\"",
+                           ri, gi, bi];
+    }
+    return @"mark";
   } else if ([style isEqualToNumber:@([InlineCodeStyle getType])]) {
     return @"code";
   } else if ([style isEqualToNumber:@([LinkStyle getType])]) {

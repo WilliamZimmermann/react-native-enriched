@@ -484,6 +484,17 @@ interface NativeCommands {
     viewRef: React.ElementRef<ComponentType>,
     alignment: string
   ) => void;
+  addHighlight: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    color: string
+  ) => void;
+  removeHighlight: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32
+  ) => void;
 }
 
 export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
@@ -520,6 +531,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'addMention',
     'requestHTML',
     'setTextAlignment',
+    'addHighlight',
+    'removeHighlight',
   ],
 });
 

@@ -448,6 +448,12 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   outdentList: () => void;
   setLink: (start: number, end: number, text: string, url: string) => void;
   removeLink: (start: number, end: number) => void;
+  /** Applies a background-color (#RRGGBB) over the range. The native
+   *  HighlightStyle stores it as NSBackgroundColorAttributeName and the
+   *  serializer emits `<mark style="background-color:#RRGGBB;">…</mark>`. */
+  setHighlight: (start: number, end: number, color: string) => void;
+  /** Strips any highlight in the range without touching other attributes. */
+  removeHighlight: (start: number, end: number) => void;
   setImage: (src: string, width: number, height: number) => void;
   startMention: (indicator: string) => void;
   setMention: (

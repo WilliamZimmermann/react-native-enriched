@@ -140,7 +140,7 @@
     [OrderedListStyle class], [CheckboxListStyle class],
     [AlignmentStyle class],   [BlockQuoteStyle class],
     [CodeBlockStyle class],   [ImageStyle class],
-    [TableStyle class]
+    [TableStyle class],       [HighlightStyle class]
   ];
 
   // No viewer counterpart for TableStyle yet — the read-only viewer flavour
@@ -168,7 +168,8 @@
     [EnrichedTextBlockQuoteStyle class],
     [EnrichedTextCodeBlockStyle class],
     [EnrichedTextImageStyle class],
-    [TableStyle class]
+    [TableStyle class],
+    [HighlightStyle class]
   ];
 
   NSMutableDictionary *dict = [NSMutableDictionary new];

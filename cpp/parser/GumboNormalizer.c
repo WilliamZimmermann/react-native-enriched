@@ -111,7 +111,8 @@ static tag_class_t classify_tag(const char *name) {
       strcmp(name, "code") == 0 || strcmp(name, "a") == 0 ||
       strcmp(name, "strong") == 0 || strcmp(name, "em") == 0 ||
       strcmp(name, "del") == 0 || strcmp(name, "strike") == 0 ||
-      strcmp(name, "ins") == 0 || strcmp(name, "mention") == 0)
+      strcmp(name, "ins") == 0 || strcmp(name, "mention") == 0 ||
+      strcmp(name, "mark") == 0)
     return TAG_CLASS_INLINE;
 
   if (strcmp(name, "p") == 0 || strcmp(name, "h1") == 0 ||
@@ -431,6 +432,13 @@ static void emit_attributes(GumboElement *el, const char *tag_name,
     emit_one_attr(out, el, "id");
     emit_one_attr(out, el, "text");
     emit_one_attr(out, el, "indicator");
+  } else if (strcmp(tag_name, "mark") == 0) {
+    /* TipTap's @tiptap/extension-highlight emits the background color on
+     * the style attribute, e.g. <mark style="background-color: #fff176">.
+     * Preserve it through the normalizer so our parser can pick the color
+     * back out and feed it to HighlightStyle. */
+    emit_one_attr(out, el, "style");
+    emit_one_attr(out, el, "data-color");
   }
 }
 

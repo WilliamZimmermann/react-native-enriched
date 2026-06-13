@@ -173,6 +173,26 @@
                                          tableData:tableData
                                      withSelection:NO
                                     withDirtyRange:YES];
+      } else if ([styleType isEqualToNumber:@([HighlightStyle getType])]) {
+        NSString *hexColor = (NSString *)stylePair.styleValue;
+        UIColor *color = nil;
+        // Inline hex parse so we don't pull in a util just for this one
+        // call site. Format: "#RRGGBB" (validated by the parser's regex).
+        if (hexColor.length == 7) {
+          unsigned int rgb = 0;
+          NSScanner *scanner =
+              [NSScanner scannerWithString:[hexColor substringFromIndex:1]];
+          if ([scanner scanHexInt:&rgb]) {
+            color = [UIColor colorWithRed:((rgb >> 16) & 0xFF) / 255.0
+                                    green:((rgb >> 8) & 0xFF) / 255.0
+                                     blue:(rgb & 0xFF) / 255.0
+                                    alpha:1.0];
+          }
+        }
+        if (color != nil) {
+          [((HighlightStyle *)baseStyle) addHighlightAtRange:styleRange
+                                                       color:color];
+        }
       } else if ([styleType isEqualToNumber:@([CheckboxListStyle getType])]) {
         NSDictionary *checkboxStates = (NSDictionary *)stylePair.styleValue;
         CheckboxListStyle *cbLStyle = (CheckboxListStyle *)baseStyle;
