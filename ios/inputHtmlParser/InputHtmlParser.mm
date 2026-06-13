@@ -204,9 +204,14 @@
 
     NSInteger delta = (NSInteger)_input->textView.textStorage.string.length -
                       (NSInteger)textLengthBeforeStyleApplied;
-    // Image shifts are already handled by _precedingImageCount during tag
-    // finalization.
-    if (delta != 0 && ![styleType isEqualToNumber:@([ImageStyle getType])]) {
+    // Image + Table shifts are already handled by _precedingImageCount during
+    // tag finalization — both go through the parser's `img` branch (Table's
+    // wire shape is `<img src="eti-table:…"/>`), so counting their inserted
+    // OBJ-REPLACEMENT character here too would double-shift every later
+    // style range and trigger a substring-out-of-range NSException on the
+    // second load.
+    if (delta != 0 && ![styleType isEqualToNumber:@([ImageStyle getType])] &&
+        ![styleType isEqualToNumber:@([TableStyle getType])]) {
       zeroWidthSpaceOffset += delta;
     }
   }
