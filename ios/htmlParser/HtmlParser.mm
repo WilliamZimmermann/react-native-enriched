@@ -299,9 +299,15 @@
                                                        withString:@""];
     } else if (useHtmlNormalizer) {
       // External HTML (from Google Docs, Word, web pages, etc.)
-      // Run through the Gumbo-based normalizer to convert arbitrary HTML
-      // into our canonical tag subset.
-      NSString *normalized = [self normalizeExternalHtml:html];
+      // Tables get swallowed by the Gumbo allow-list (TAG_CLASS_SKIP for
+      // table/tr/td/th — only the cell text leaks through), so we hide
+      // each `<table>...</table>` block inside a self-closing
+      // `<img src="eti-table:<base64>"/>` BEFORE the normalizer runs. img
+      // is in Gumbo's self-closing allow-list and the src attribute is
+      // preserved verbatim; getTextAndStylesFromHtml: detects the special
+      // src prefix and emits a TableStyle entry instead of ImageStyle.
+      NSString *tableSafe = [self preprocessTablesIn:html];
+      NSString *normalized = [self normalizeExternalHtml:tableSafe];
       if (normalized != nil) {
         fixedHtml = normalized;
       }
@@ -576,17 +582,16 @@
 
 // Pre-pass over the html that swaps every top-level `<table>...</table>`
 // block (depth-counted so a TipTap-pasted nested table doesn't fuse) for
-// a self-closing `<eti-table-N/>` token, and accumulates a parallel array
-// of TableData (raw HTML + parsed rows). The main parser then treats each
-// `<eti-table-N>` like `<img>`: a single style entry on a single Object
-// Replacement Character. Serializer reads the rawHtml back out.
+// a self-closing `<img src="eti-table:<base64>"/>` token. The base64 body
+// is the raw `<table>` HTML — the main parser's <img> branch detects the
+// `eti-table:` prefix and emits a TableStyle entry instead of ImageStyle.
 //
-// Why a synthetic tag rather than stuffing tables into ongoingTags or a
-// custom branch in the main loop: it isolates the table complexity to
-// this pre-pass, keeps the char-by-char machine ignorant of table
-// structure, and makes the post-pass a single regex sweep.
-+ (NSString *)preprocessTablesIn:(NSString *)html
-                       collected:(NSMutableArray<TableData *> *)collected {
+// Why `<img>` rather than a custom tag: this pre-pass must run BEFORE
+// normalizeExternalHtml: (Gumbo), which drops anything not in its allow-
+// list (including `<table>` and any unknown tag like `<eti-table-N>`).
+// `<img src="…">` survives the normalizer intact. Wrapping in `<img>` is
+// the smallest contract change that survives the destruction pass.
++ (NSString *)preprocessTablesIn:(NSString *)html {
   if (html.length == 0)
     return html ?: @"";
   NSMutableString *out = [NSMutableString string];
@@ -650,32 +655,51 @@
     NSString *rawTable =
         [html substringWithRange:NSMakeRange(openRange.location,
                                              tableEnd - openRange.location)];
-
-    TableData *data = [[TableData alloc] init];
-    data.rawHtml = rawTable;
-    data.rows = [self parseTableRowsFromHtml:rawTable];
-    NSInteger colCount = 0;
-    for (NSArray<NSString *> *row in data.rows) {
-      if ((NSInteger)row.count > colCount)
-        colCount = (NSInteger)row.count;
-    }
-    data.colCount = colCount;
-    [collected addObject:data];
-    [out
-        appendFormat:@"<eti-table-%lu/>", (unsigned long)(collected.count - 1)];
+    NSData *rawTableData = [rawTable dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *base64 = [rawTableData base64EncodedStringWithOptions:0];
+    [out appendFormat:@"<img src=\"eti-table:%@\"/>", base64];
     cursor = tableEnd;
   }
   return out;
 }
 
+// Decodes the base64 body of a `eti-table:<base64>` img-src back into a
+// TableData (rawHtml + parsed rows). Used by the main loop's img branch
+// to swap an ImageStyle entry for a TableStyle one when it spots our
+// special prefix.
++ (TableData *)decodeTableDataFromSrc:(NSString *)src {
+  NSString *prefix = @"eti-table:";
+  if (![src hasPrefix:prefix])
+    return nullptr;
+  NSString *base64 = [src substringFromIndex:prefix.length];
+  NSData *decoded = [[NSData alloc] initWithBase64EncodedString:base64
+                                                        options:0];
+  if (decoded == nil)
+    return nullptr;
+  NSString *rawHtml = [[NSString alloc] initWithData:decoded
+                                            encoding:NSUTF8StringEncoding];
+  if (rawHtml.length == 0)
+    return nullptr;
+  TableData *data = [[TableData alloc] init];
+  data.rawHtml = rawHtml;
+  data.rows = [self parseTableRowsFromHtml:rawHtml];
+  NSInteger colCount = 0;
+  for (NSArray<NSString *> *row in data.rows) {
+    if ((NSInteger)row.count > colCount)
+      colCount = (NSInteger)row.count;
+  }
+  data.colCount = colCount;
+  return data;
+}
+
 + (NSArray *_Nonnull)getTextAndStylesFromHtml:(NSString *_Nonnull)fixedHtml {
-  // Stash each <table>...</table> as TableData up front, replacing the
-  // block with a self-closing <eti-table-N/> sentinel. The main char-by-char
-  // loop then sees that token like an image and emits a single style entry
-  // pointing at the TableData by index. tagContentForStyle reverses the
-  // mapping on serialization.
-  NSMutableArray<TableData *> *collectedTables = [NSMutableArray array];
-  fixedHtml = [self preprocessTablesIn:fixedHtml collected:collectedTables];
+  // Round-trip safety net: when the input is our own canonical format
+  // (didn't go through initiallyProcessHtml's normalizer branch), <table>
+  // blocks survive intact and still need to be swapped for the img
+  // placeholder before the char-by-char loop sees them. External HTML
+  // already had this done up front by initiallyProcessHtml:, so this is
+  // idempotent there (no <table> left to match).
+  fixedHtml = [self preprocessTablesIn:fixedHtml];
 
   NSMutableString *plainText = [[NSMutableString alloc] initWithString:@""];
   NSMutableDictionary *ongoingTags = [[NSMutableDictionary alloc] init];
@@ -984,11 +1008,28 @@
       }
 
       NSRange srcRange = match.range;
-      [styleArr addObject:@([ImageStyle getType])];
       // cut only the uri from the src="..." string
       NSString *uri =
           [params substringWithRange:NSMakeRange(srcRange.location + 5,
                                                  srcRange.length - 6)];
+
+      // Table placeholder emitted by preprocessTablesIn: — same wire shape
+      // as a regular <img/> but the src carries a base64-encoded `<table>`
+      // block. Decode and emit a TableStyle entry instead of ImageStyle.
+      if ([uri hasPrefix:@"eti-table:"]) {
+        TableData *tableData = [self decodeTableDataFromSrc:uri];
+        if (tableData == nullptr) {
+          continue;
+        }
+        [styleArr addObject:@([TableStyle getType])];
+        stylePair.styleValue = tableData;
+        stylePair.rangeValue = tagRangeValue;
+        [styleArr addObject:stylePair];
+        [processedStyles addObject:styleArr];
+        continue;
+      }
+
+      [styleArr addObject:@([ImageStyle getType])];
       ImageData *imageData = [[ImageData alloc] init];
       imageData.uri = uri;
 
@@ -1023,23 +1064,6 @@
       }
 
       stylePair.styleValue = imageData;
-    } else if ([tagName hasPrefix:@"eti-table-"]) {
-      // Synthetic token emitted by preprocessTablesIn:collected: for each
-      // `<table>...</table>` block in the source. The suffix is the index
-      // into `collectedTables`; we use it to attach the stashed TableData
-      // (rawHtml + parsed rows) so the input applier can render the grid
-      // and the serializer can round-trip the original markup.
-      NSString *idxStr = [tagName substringFromIndex:[@"eti-table-" length]];
-      NSInteger idx = [idxStr integerValue];
-      if (idx < 0 || idx >= (NSInteger)collectedTables.count) {
-        continue;
-      }
-      TableData *data = collectedTables[idx];
-      if (data == nullptr) {
-        continue;
-      }
-      [styleArr addObject:@([TableStyle getType])];
-      stylePair.styleValue = data;
     } else if ([tagName isEqualToString:@"u"]) {
       [styleArr addObject:@([UnderlineStyle getType])];
     } else if ([tagName isEqualToString:@"s"]) {
