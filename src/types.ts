@@ -390,6 +390,13 @@ export interface OnChangeSelectionEvent {
   start: number;
   end: number;
   text: string;
+  /** Bounding rect of the selection's first line, in the editor view's
+   *  coordinate space (points). All zero when the selection is collapsed.
+   *  Consumers use it to anchor a popover above the highlighted text. */
+  rectX: number;
+  rectY: number;
+  rectWidth: number;
+  rectHeight: number;
 }
 
 export interface OnKeyPressEvent {

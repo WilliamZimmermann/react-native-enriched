@@ -2150,6 +2150,27 @@ static UIColor *katavParseHexColor(NSString *hex) {
       [[[NSMutableString alloc] initWithString:textView.textStorage.string]
           substringWithRange:textView.selectedRange];
 
+  // Compute the on-screen rect of the selection so JS can anchor a popover
+  // (highlight / Define / Search) above it. firstRectForRange returns the
+  // bounding rect of the FIRST line of the selection in the text view's
+  // own coordinate space; we hand that straight to JS, which already lays
+  // the popover out relative to the editor view. Empty / collapsed
+  // selections report a zero-size rect and the JS side hides the popover.
+  CGRect selectionRect = CGRectZero;
+  if (textView.selectedRange.length > 0) {
+    UITextRange *textRange =
+        [self katavTextRangeFromNSRange:textView.selectedRange
+                             inTextView:textView];
+    if (textRange != nil) {
+      selectionRect = [textView firstRectForRange:textRange];
+      // firstRectForRange can return CGRectNull / infinite for ranges that
+      // aren't laid out yet — clamp to zero so JS treats it as "no rect".
+      if (CGRectIsNull(selectionRect) || CGRectIsInfinite(selectionRect)) {
+        selectionRect = CGRectZero;
+      }
+    }
+  }
+
   auto emitter = [self getEventEmitter];
   if (emitter != nullptr) {
     // iOS range works differently because it specifies location and length
@@ -2159,11 +2180,34 @@ static UIColor *katavParseHexColor(NSString *hex) {
         {.start = static_cast<int>(textView.selectedRange.location),
          .end = static_cast<int>(textView.selectedRange.location +
                                  textView.selectedRange.length),
-         .text = [textAtSelection toCppString]});
+         .text = [textAtSelection toCppString],
+         .rectX = static_cast<double>(selectionRect.origin.x),
+         .rectY = static_cast<double>(selectionRect.origin.y),
+         .rectWidth = static_cast<double>(selectionRect.size.width),
+         .rectHeight = static_cast<double>(selectionRect.size.height)});
   }
 
   // manage selection changes
   [self manageSelectionBasedChanges];
+}
+
+// Builds a UITextRange from an NSRange so we can ask the text view for the
+// selection's on-screen rect. Returns nil if the range can't be mapped to
+// valid text positions (e.g. out of bounds mid-edit).
+- (UITextRange *)katavTextRangeFromNSRange:(NSRange)range
+                                inTextView:(UITextView *)textView {
+  UITextPosition *beginning = textView.beginningOfDocument;
+  UITextPosition *start = [textView positionFromPosition:beginning
+                                                  offset:range.location];
+  if (start == nil) {
+    return nil;
+  }
+  UITextPosition *end = [textView positionFromPosition:start
+                                                offset:range.length];
+  if (end == nil) {
+    return nil;
+  }
+  return [textView textRangeFromPosition:start toPosition:end];
 }
 
 // this function isn't called always when some text changes (for example setting

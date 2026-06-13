@@ -56,11 +56,7 @@ export function TestSetSelection() {
             editable
             scrollEnabled
             onChangeSelection={(e) => {
-              setLastSelection({
-                start: e.nativeEvent.start,
-                end: e.nativeEvent.end,
-                text: e.nativeEvent.text,
-              });
+              setLastSelection(e.nativeEvent);
             }}
           />
         </div>

@@ -154,6 +154,13 @@ export interface OnChangeSelectionEvent {
   start: Int32;
   end: Int32;
   text: string;
+  // On-screen bounding rect of the selection's first line, in the editor
+  // view's coordinate space. Zero-size when the selection is collapsed —
+  // JS uses it to anchor the selection popover above the highlight.
+  rectX: Float;
+  rectY: Float;
+  rectWidth: Float;
+  rectHeight: Float;
 }
 
 export interface OnRequestHtmlResultEvent {

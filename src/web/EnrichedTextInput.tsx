@@ -250,7 +250,20 @@ export const EnrichedTextInput = ({
         const start = tiptapPosToNativePos(state.doc, from);
         const end = tiptapPosToNativePos(state.doc, to);
         const text = nativeLeafText(state.doc, from, to);
-        onChangeSelection?.(adaptWebToNativeEvent(null, { start, end, text }));
+        // Web has no native selection rect to report (the host app owns
+        // its own selection UI), so the rect fields are always zero — the
+        // native path is the only one that anchors the popover.
+        onChangeSelection?.(
+          adaptWebToNativeEvent(null, {
+            start,
+            end,
+            text,
+            rectX: 0,
+            rectY: 0,
+            rectWidth: 0,
+            rectHeight: 0,
+          })
+        );
       },
       editorProps: {
         handleKeyDown: (view, event) => handleKeyDown(view.state.doc, event),
