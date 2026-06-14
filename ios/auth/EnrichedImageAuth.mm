@@ -50,8 +50,10 @@ RCT_EXPORT_METHOD(setAuthHeader
     return nil;
 
   BOOL schemeOk =
+      url.scheme != nil && origin.scheme != nil &&
       [url.scheme caseInsensitiveCompare:origin.scheme] == NSOrderedSame;
-  BOOL hostOk = [url.host caseInsensitiveCompare:origin.host] == NSOrderedSame;
+  BOOL hostOk = url.host != nil && origin.host != nil &&
+                [url.host caseInsensitiveCompare:origin.host] == NSOrderedSame;
   BOOL portOk = (url.port == nil && origin.port == nil) ||
                 [url.port isEqualToNumber:origin.port];
   BOOL pathOk = [url.path hasPrefix:@"/api/mobile/"];
