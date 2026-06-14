@@ -52,10 +52,46 @@ open class EnrichedImageSpan :
 
   override fun getDrawable(): Drawable {
     val drawable = super.getDrawable()
-    val scale = Resources.getSystem().displayMetrics.density
+    val (w, h) = effectiveBounds(drawable)
 
-    drawable.setBounds(0, 0, (width * scale).toInt(), (height * scale).toInt())
+    drawable.setBounds(0, 0, w, h)
     return drawable
+  }
+
+  /**
+   * Returns the pixel size at which the image should render.
+   *
+   * When the author supplied real dimensions (`width > 0 && height > 0`) we keep
+   * the existing behavior: convert the dp attributes to px using the display
+   * density.
+   *
+   * Web-authored notes store `<img width="0" height="0">` and let CSS size the
+   * image. With no usable author dimensions the editor would draw the image at
+   * 0×0 (invisible), so once the drawable has loaded we adopt its intrinsic
+   * pixel size, capped to the device width (preserving aspect ratio) so a large
+   * image never overflows. Intrinsic size is -1 until the async load finishes;
+   * we return 0×0 until then and rely on the load callback to re-measure.
+   */
+  private fun effectiveBounds(d: Drawable): Pair<Int, Int> {
+    if (width > 0 && height > 0) {
+      val scale = Resources.getSystem().displayMetrics.density
+      return Pair((width * scale).toInt(), (height * scale).toInt())
+    }
+
+    var iw = d.intrinsicWidth
+    var ih = d.intrinsicHeight
+    if (iw <= 0 || ih <= 0) {
+      // Not loaded yet — stay 0×0; observeAsyncDrawableLoaded() triggers a
+      // re-measure once the intrinsic size is known.
+      return Pair(0, 0)
+    }
+
+    val maxW = Resources.getSystem().displayMetrics.widthPixels
+    if (maxW > 0 && iw > maxW) {
+      ih = (ih.toLong() * maxW / iw).toInt()
+      iw = maxW
+    }
+    return Pair(iw, ih)
   }
 
   override fun getSize(

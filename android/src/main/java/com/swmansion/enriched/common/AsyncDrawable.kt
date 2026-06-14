@@ -94,7 +94,13 @@ class AsyncDrawable(
 
         val drawable =
           ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
-            decoder.setTargetSize(bounds.width(), bounds.height())
+            // Only constrain the decode when a real target size is known.
+            // For web-authored <img width="0" height="0"> the bounds are still
+            // 0×0 at load time; decoding at 0×0 would yield an invisible image,
+            // so fall through to the intrinsic size instead.
+            if (bounds.width() > 0 && bounds.height() > 0) {
+              decoder.setTargetSize(bounds.width(), bounds.height())
+            }
           }
 
         if (drawable is AnimatedImageDrawable) {
@@ -136,6 +142,14 @@ class AsyncDrawable(
 
   @Deprecated("Deprecated in Java")
   override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+
+  // Expose the loaded image's intrinsic size. Returns -1 before the async load
+  // completes (the placeholder transparent drawable has no intrinsic size) and
+  // the real pixel dimensions afterwards. Used to size web-authored images that
+  // ship without usable author width/height.
+  override fun getIntrinsicWidth(): Int = internalDrawable.intrinsicWidth
+
+  override fun getIntrinsicHeight(): Int = internalDrawable.intrinsicHeight
 
   override fun setBounds(
     left: Int,
