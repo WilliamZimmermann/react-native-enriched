@@ -2196,11 +2196,17 @@ static UIColor *katavParseHexColor(NSString *hex) {
         [self katavTextRangeFromNSRange:textView.selectedRange
                              inTextView:textView];
     if (textRange != nil) {
-      selectionRect = [textView firstRectForRange:textRange];
+      CGRect rawRect = [textView firstRectForRange:textRange];
       // firstRectForRange can return CGRectNull / infinite for ranges that
       // aren't laid out yet — clamp to zero so JS treats it as "no rect".
-      if (CGRectIsNull(selectionRect) || CGRectIsInfinite(selectionRect)) {
+      if (CGRectIsNull(rawRect) || CGRectIsInfinite(rawRect)) {
         selectionRect = CGRectZero;
+      } else {
+        // firstRectForRange returns coords in textView's own coordinate space,
+        // which includes the scroll content offset. Convert to the outer view
+        // (self) so the JS popover — anchored relative to the React wrapper,
+        // not the scrollable content — is positioned correctly after scrolling.
+        selectionRect = [textView convertRect:rawRect toView:self];
       }
     }
   }
