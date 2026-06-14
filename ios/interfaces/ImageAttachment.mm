@@ -52,6 +52,23 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
                       proposedLineFragment:(CGRect)lineFrag
                              glyphPosition:(CGPoint)position
                             characterIndex:(NSUInteger)charIndex {
+  // Fit the image to the editor's content width (preserve aspect). Recomputed
+  // from the stored intrinsic/author size every layout so it stays correct
+  // across rotation / sidebar resize, and so a large image never overflows.
+  if (textContainer != nil) {
+    CGFloat available =
+        textContainer.size.width - 2 * textContainer.lineFragmentPadding;
+    if (available > 0 && self.width > 0 && self.height > 0) {
+      CGFloat w = self.width;
+      CGFloat h = self.height;
+      if (w > available) {
+        h = h * (available / w);
+        w = available;
+      }
+      self.bounds = CGRectMake(0, 0, w, h);
+    }
+  }
+
   CGRect baseBounds = self.bounds;
 
   if (!textContainer.layoutManager.textStorage ||
@@ -102,6 +119,17 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
         NSUInteger cost = (NSUInteger)(img.size.width * scale *
                                        img.size.height * scale * 4.0);
         [ImageAttachmentCache() setObject:img forKey:self.uri cost:cost];
+      }
+      // Web-authored notes store <img width="0" height="0"> and let CSS size
+      // the image; without usable author dimensions the native editor would
+      // draw it at 0×0 (invisible). Adopt the loaded image's intrinsic size —
+      // the layout pass (attachmentBoundsForTextContainer:) clamps it to the
+      // editor's width.
+      if (img != nil && (self.width <= 0 || self.height <= 0) &&
+          img.size.width > 0 && img.size.height > 0) {
+        self.width = img.size.width;
+        self.height = img.size.height;
+        self.bounds = CGRectMake(0, 0, img.size.width, img.size.height);
       }
       self.storedAnimatedImage = img;
       [self notifyUpdate];
