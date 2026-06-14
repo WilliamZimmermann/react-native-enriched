@@ -41,7 +41,25 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
   self.image = [UIImage new];
 
   if (cachedImage != nil) {
+    // Web-authored notes store <img width="0" height="0">; when the image is
+    // already in the cache we never enter loadAsync, so self.width/height stay
+    // at 0 and attachmentBoundsForTextContainer returns a 0×0 rect — making
+    // the image invisible on navigate-back (warm cache, cold dimensions).
+    // Mirror the loadAsync pattern exactly: set width/height/bounds so the
+    // first layout pass has non-zero values, then kick notifyUpdate async so
+    // the text layout manager repositions the ImageView overlay after init
+    // completes (same reason loadAsync dispatches notifyUpdate on main queue).
+    if ((self.width <= 0 || self.height <= 0) && cachedImage.size.width > 0 &&
+        cachedImage.size.height > 0) {
+      self.width = cachedImage.size.width;
+      self.height = cachedImage.size.height;
+      self.bounds =
+          CGRectMake(0, 0, cachedImage.size.width, cachedImage.size.height);
+    }
     self.storedAnimatedImage = cachedImage;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self notifyUpdate];
+    });
   } else {
     [self loadAsync];
   }
