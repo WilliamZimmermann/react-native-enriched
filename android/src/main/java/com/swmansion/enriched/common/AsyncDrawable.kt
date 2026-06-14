@@ -15,6 +15,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.graphics.drawable.toDrawable
 import com.swmansion.enriched.R
+import com.swmansion.enriched.auth.ImageAuthStore
+import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
@@ -37,9 +39,8 @@ class AsyncDrawable(
     executor.execute {
       try {
         isLoaded = false
-        val inputStream = URL(url).openStream()
-        val bytes = inputStream.readBytes()
-        val d = prepareDrawable(bytes)
+        val bytes = openBytes(url)
+        val d = bytes?.let { prepareDrawable(it) }
 
         // Switch to Main Thread to update UI
         mainHandler.post {
@@ -58,6 +59,30 @@ class AsyncDrawable(
         isLoaded = true
         onLoaded?.invoke()
       }
+    }
+  }
+
+  // Reads the image bytes. Attaches the session bearer header for same-origin
+  // API images (plain <img> tags can't otherwise carry one); plain stream
+  // otherwise.
+  private fun openBytes(url: String): ByteArray? {
+    val token = ImageAuthStore.tokenForUrl(url)
+    if (token == null) {
+      return URL(url).openStream().use { it.readBytes() }
+    }
+    val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+      setRequestProperty("Authorization", "Bearer $token")
+      connectTimeout = 15000
+      readTimeout = 15000
+    }
+    return try {
+      if (conn.responseCode in 200..299) {
+        conn.inputStream.use { it.readBytes() }
+      } else {
+        null
+      }
+    } finally {
+      conn.disconnect()
     }
   }
 

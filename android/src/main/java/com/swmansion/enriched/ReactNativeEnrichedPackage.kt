@@ -4,6 +4,7 @@ import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
+import com.swmansion.enriched.auth.EnrichedImageAuthModule
 import com.swmansion.enriched.common.ResourceManager
 import com.swmansion.enriched.text.EnrichedTextViewManager
 import com.swmansion.enriched.textinput.EnrichedTextInputViewManager
@@ -18,5 +19,6 @@ class ReactNativeEnrichedPackage : ReactPackage {
     return viewManagers
   }
 
-  override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> = emptyList()
+  override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
+    listOf(EnrichedImageAuthModule(reactContext))
 }
