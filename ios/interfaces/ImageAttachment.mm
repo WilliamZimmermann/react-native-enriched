@@ -1,4 +1,5 @@
 #import "ImageAttachment.h"
+#import "EnrichedImageAuth.h"
 #import "ImageExtension.h"
 
 // NSTextStorage frequently recreates NSTextAttachment objects during attribute
@@ -16,6 +17,10 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
   });
   return cache;
 }
+
+@interface ImageAttachment ()
+- (NSData *)fetchBytesForURL:(NSURL *)url;
+@end
 
 @implementation ImageAttachment
 
@@ -80,7 +85,7 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
   }
 
   dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-    NSData *bytes = [NSData dataWithContentsOfURL:url];
+    NSData *bytes = [self fetchBytesForURL:url];
 
     // We pass all image data (including static formats like PNG or JPEG)
     // through the animated image parser. It safely acts as a universal parser,
@@ -102,6 +107,38 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
       [self notifyUpdate];
     });
   });
+}
+
+// Loads bytes for `url`. When the URL matches the configured API origin we
+// attach the session bearer token (the enriched editor can't otherwise send a
+// header for plain note <img> tags). Falls back to a plain load otherwise.
+- (NSData *)fetchBytesForURL:(NSURL *)url {
+  NSString *token = [EnrichedImageAuth tokenForURL:url];
+  if (token == nil) {
+    return [NSData dataWithContentsOfURL:url];
+  }
+
+  NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url];
+  [req setValue:[NSString stringWithFormat:@"Bearer %@", token]
+      forHTTPHeaderField:@"Authorization"];
+
+  __block NSData *result = nil;
+  dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+  NSURLSessionDataTask *task = [[NSURLSession sharedSession]
+      dataTaskWithRequest:req
+        completionHandler:^(NSData *data, NSURLResponse *response,
+                            NSError *error) {
+          NSInteger status = [response isKindOfClass:[NSHTTPURLResponse class]]
+                                 ? ((NSHTTPURLResponse *)response).statusCode
+                                 : 200;
+          if (data != nil && error == nil && status >= 200 && status < 300) {
+            result = data;
+          }
+          dispatch_semaphore_signal(sem);
+        }];
+  [task resume];
+  dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER); // already on a bg queue
+  return result;
 }
 
 @end
