@@ -23,6 +23,9 @@ export type {
   TextShortcutStyle,
 } from './types';
 
+// EnrichedImageAuth
+export { setImageAuthHeader } from './native/EnrichedImageAuth';
+
 // EnrichedText
 export { EnrichedText } from './native/EnrichedText';
 export type {
