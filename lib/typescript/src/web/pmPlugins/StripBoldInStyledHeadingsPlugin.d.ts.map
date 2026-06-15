@@ -1,0 +1,1 @@
+{"version":3,"file":"StripBoldInStyledHeadingsPlugin.d.ts","sourceRoot":"","sources":["../../../../../src/web/pmPlugins/StripBoldInStyledHeadingsPlugin.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAqB,MAAM,cAAc,CAAC;AAU5D,OAAO,QAAQ,cAAc,CAAC;IAC5B,UAAU,QAAQ,CAAC,UAAU;QAC3B,yBAAyB,EAAE;YAEzB,6BAA6B,EAAE,MAAM,UAAU,CAAC;SACjD,CAAC;KACH;CACF;AAwBD,eAAO,MAAM,+BAA+B,qBAqC1C,CAAC"}

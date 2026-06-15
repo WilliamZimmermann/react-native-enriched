@@ -1,0 +1,1 @@
+{"version":3,"file":"adaptWebToNativeEvent.d.ts","sourceRoot":"","sources":["../../../../src/web/adaptWebToNativeEvent.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAiB,oBAAoB,EAAE,MAAM,cAAc,CAAC;AAMxE,wBAAgB,qBAAqB,CAAC,CAAC,EACrC,QAAQ,EAAE,KAAK,CAAC,cAAc,GAAG,KAAK,GAAG,IAAI,EAC7C,kBAAkB,EAAE,CAAC,GACpB,oBAAoB,CAAC,CAAC,CAAC,CA2BzB"}

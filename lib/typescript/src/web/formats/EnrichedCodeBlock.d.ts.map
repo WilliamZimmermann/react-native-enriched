@@ -1,0 +1,1 @@
+{"version":3,"file":"EnrichedCodeBlock.d.ts","sourceRoot":"","sources":["../../../../../src/web/formats/EnrichedCodeBlock.ts"],"names":[],"mappings":"AAOA,OAAO,QAAQ,cAAc,CAAC;IAC5B,UAAU,QAAQ,CAAC,UAAU;QAC3B,SAAS,EAAE;YACT,eAAe,EAAE,MAAM,UAAU,CAAC;SACnC,CAAC;KACH;CACF;AAGD,eAAO,MAAM,iBAAiB,4FAoC5B,CAAC"}

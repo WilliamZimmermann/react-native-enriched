@@ -1,0 +1,3 @@
+export { EnrichedTextInput } from './web/EnrichedTextInput';
+export type { EnrichedInputStyle, EnrichedTextInputProps, OnChangeTextEvent, OnChangeHtmlEvent, OnChangeStateEvent, OnLinkDetected, OnMentionDetected, OnChangeSelectionEvent, OnKeyPressEvent, OnPasteImagesEvent, OnSubmitEditing, HtmlStyle, MentionStyleProperties, FocusEvent, BlurEvent, EnrichedTextInputInstance, ContextMenuItem, OnChangeMentionEvent, EnrichedTextHtmlStyle, OnMentionPressEvent, OnLinkPressEvent, } from './types';
+//# sourceMappingURL=index.d.ts.map

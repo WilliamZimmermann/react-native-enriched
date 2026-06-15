@@ -1,0 +1,1 @@
+{"version":3,"file":"EnrichedCheckboxList.d.ts","sourceRoot":"","sources":["../../../../../src/web/formats/EnrichedCheckboxList.ts"],"names":[],"mappings":"AAKA,OAAO,QAAQ,cAAc,CAAC;IAC5B,UAAU,QAAQ,CAAC,UAAU;QAC3B,YAAY,EAAE;YACZ,kBAAkB,EAAE,CAAC,OAAO,EAAE,OAAO,KAAK,UAAU,CAAC;SACtD,CAAC;KACH;CACF;AAED,eAAO,MAAM,oBAAoB,oFAiC/B,CAAC"}

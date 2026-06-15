@@ -1,0 +1,1 @@
+{"version":3,"file":"EnrichedUnorderedList.d.ts","sourceRoot":"","sources":["../../../../../src/web/formats/EnrichedUnorderedList.ts"],"names":[],"mappings":"AAKA,OAAO,QAAQ,cAAc,CAAC;IAC5B,UAAU,QAAQ,CAAC,UAAU;QAC3B,aAAa,EAAE;YACb,mBAAmB,EAAE,MAAM,UAAU,CAAC;SACvC,CAAC;KACH;CACF;AAID,eAAO,MAAM,qBAAqB,sFAkChC,CAAC"}

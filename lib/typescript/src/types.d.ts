@@ -1,0 +1,538 @@
+import type { RefObject } from 'react';
+import type { ColorValue, DimensionValue, NativeMethods, NativeSyntheticEvent, ReturnKeyTypeOptions, TargetedEvent, TextStyle, ViewProps } from 'react-native';
+/**
+ * Allowed container styles for `<EnrichedTextInput />`'s `style` prop.
+ *
+ * Represents the supported subset of React Native
+ * [`TextStyle`](https://reactnative.dev/docs/text-style-props).
+ * Some properties are not supported on all platforms. In such cases a property
+ * is annotated with a `@platform` directive.
+ */
+export interface EnrichedInputStyle {
+    alignSelf?: TextStyle['alignSelf'];
+    aspectRatio?: number | string;
+    borderBottomWidth?: number;
+    borderEndWidth?: number;
+    borderLeftWidth?: number;
+    borderRightWidth?: number;
+    borderStartWidth?: number;
+    borderTopWidth?: number;
+    borderWidth?: number;
+    bottom?: DimensionValue;
+    boxSizing?: TextStyle['boxSizing'];
+    display?: TextStyle['display'];
+    end?: DimensionValue;
+    flex?: number;
+    flexBasis?: DimensionValue;
+    flexGrow?: number;
+    flexShrink?: number;
+    height?: DimensionValue;
+    inset?: DimensionValue;
+    insetBlock?: DimensionValue;
+    insetBlockEnd?: DimensionValue;
+    insetBlockStart?: DimensionValue;
+    insetInline?: DimensionValue;
+    insetInlineEnd?: DimensionValue;
+    insetInlineStart?: DimensionValue;
+    left?: DimensionValue;
+    margin?: DimensionValue;
+    marginBlock?: DimensionValue;
+    marginBlockEnd?: DimensionValue;
+    marginBlockStart?: DimensionValue;
+    marginBottom?: DimensionValue;
+    marginEnd?: DimensionValue;
+    marginHorizontal?: DimensionValue;
+    marginInline?: DimensionValue;
+    marginInlineEnd?: DimensionValue;
+    marginInlineStart?: DimensionValue;
+    marginLeft?: DimensionValue;
+    marginRight?: DimensionValue;
+    marginStart?: DimensionValue;
+    marginTop?: DimensionValue;
+    marginVertical?: DimensionValue;
+    maxHeight?: DimensionValue;
+    maxWidth?: DimensionValue;
+    minHeight?: DimensionValue;
+    minWidth?: DimensionValue;
+    padding?: DimensionValue;
+    paddingBlock?: DimensionValue;
+    paddingBlockEnd?: DimensionValue;
+    paddingBlockStart?: DimensionValue;
+    paddingBottom?: DimensionValue;
+    paddingEnd?: DimensionValue;
+    paddingHorizontal?: DimensionValue;
+    paddingInline?: DimensionValue;
+    paddingInlineEnd?: DimensionValue;
+    paddingInlineStart?: DimensionValue;
+    paddingLeft?: DimensionValue;
+    paddingRight?: DimensionValue;
+    paddingStart?: DimensionValue;
+    paddingTop?: DimensionValue;
+    paddingVertical?: DimensionValue;
+    position?: TextStyle['position'];
+    right?: DimensionValue;
+    start?: DimensionValue;
+    top?: DimensionValue;
+    width?: DimensionValue;
+    zIndex?: number;
+    /** @platform ios */
+    shadowColor?: ColorValue;
+    /** @platform ios */
+    shadowOffset?: TextStyle['shadowOffset'];
+    /** @platform ios */
+    shadowOpacity?: TextStyle['shadowOpacity'];
+    /** @platform ios */
+    shadowRadius?: number;
+    transform?: TextStyle['transform'];
+    transformOrigin?: TextStyle['transformOrigin'];
+    /** @platform ios web */
+    backfaceVisibility?: TextStyle['backfaceVisibility'];
+    backgroundColor?: ColorValue;
+    /** @platform ios web */
+    borderBlockColor?: ColorValue;
+    /** @platform ios web */
+    borderBlockEndColor?: ColorValue;
+    /** @platform ios web */
+    borderBlockStartColor?: ColorValue;
+    /** @platform ios web */
+    borderBottomColor?: ColorValue;
+    /** @platform ios web */
+    borderBottomEndRadius?: TextStyle['borderBottomEndRadius'];
+    /** @platform ios web */
+    borderBottomLeftRadius?: TextStyle['borderBottomLeftRadius'];
+    /** @platform ios web */
+    borderBottomRightRadius?: TextStyle['borderBottomRightRadius'];
+    /** @platform ios web */
+    borderBottomStartRadius?: TextStyle['borderBottomStartRadius'];
+    /** @platform ios web */
+    borderColor?: ColorValue;
+    /** @platform ios web */
+    borderEndColor?: ColorValue;
+    /** @platform ios web */
+    borderEndEndRadius?: TextStyle['borderEndEndRadius'];
+    /** @platform ios web */
+    borderEndStartRadius?: TextStyle['borderEndStartRadius'];
+    /** @platform ios web */
+    borderLeftColor?: ColorValue;
+    /** @platform ios web */
+    borderRadius?: TextStyle['borderRadius'];
+    /** @platform ios web */
+    borderRightColor?: ColorValue;
+    /** @platform ios web */
+    borderStartColor?: ColorValue;
+    /** @platform ios web */
+    borderStartEndRadius?: TextStyle['borderStartEndRadius'];
+    /** @platform ios web */
+    borderStartStartRadius?: TextStyle['borderStartStartRadius'];
+    /** @platform ios web */
+    borderStyle?: TextStyle['borderStyle'];
+    /** @platform ios web */
+    borderTopColor?: ColorValue;
+    /** @platform ios web */
+    borderTopEndRadius?: TextStyle['borderTopEndRadius'];
+    /** @platform ios web */
+    borderTopLeftRadius?: TextStyle['borderTopLeftRadius'];
+    /** @platform ios web */
+    borderTopRightRadius?: TextStyle['borderTopRightRadius'];
+    /** @platform ios web */
+    borderTopStartRadius?: TextStyle['borderTopStartRadius'];
+    boxShadow?: TextStyle['boxShadow'];
+    /** @platform web */
+    cursor?: TextStyle['cursor'];
+    /** @platform android */
+    elevation?: number;
+    /** @platform android web */
+    filter?: TextStyle['filter'];
+    /** @platform android web */
+    mixBlendMode?: TextStyle['mixBlendMode'];
+    opacity?: TextStyle['opacity'];
+    /** @platform ios web */
+    outlineColor?: ColorValue;
+    outlineOffset?: TextStyle['outlineOffset'];
+    /** @platform android web */
+    outlineStyle?: TextStyle['outlineStyle'];
+    outlineWidth?: TextStyle['outlineWidth'];
+    /** @platform ios web */
+    pointerEvents?: TextStyle['pointerEvents'];
+    color?: ColorValue;
+    fontFamily?: string;
+    fontSize?: number;
+    fontStyle?: TextStyle['fontStyle'];
+    fontWeight?: TextStyle['fontWeight'];
+    lineHeight?: number;
+    /** @platform web */
+    letterSpacing?: number;
+}
+interface HeadingStyle {
+    fontSize?: number;
+    bold?: boolean;
+}
+export interface MentionStyleProperties {
+    color?: ColorValue;
+    backgroundColor?: ColorValue;
+    textDecorationLine?: 'underline' | 'none';
+}
+export interface HtmlStyle {
+    h1?: HeadingStyle;
+    h2?: HeadingStyle;
+    h3?: HeadingStyle;
+    h4?: HeadingStyle;
+    h5?: HeadingStyle;
+    h6?: HeadingStyle;
+    blockquote?: {
+        borderColor?: ColorValue;
+        borderWidth?: number;
+        gapWidth?: number;
+        color?: ColorValue;
+    };
+    codeblock?: {
+        color?: ColorValue;
+        borderRadius?: number;
+        backgroundColor?: ColorValue;
+    };
+    code?: {
+        color?: ColorValue;
+        backgroundColor?: ColorValue;
+    };
+    a?: {
+        color?: ColorValue;
+        textDecorationLine?: 'underline' | 'none';
+    };
+    mention?: Record<string, MentionStyleProperties> | MentionStyleProperties;
+    ol?: {
+        gapWidth?: number;
+        marginLeft?: number;
+        markerFontWeight?: TextStyle['fontWeight'];
+        markerColor?: ColorValue;
+    };
+    ul?: {
+        bulletColor?: ColorValue;
+        bulletSize?: number;
+        marginLeft?: number;
+        gapWidth?: number;
+    };
+    ulCheckbox?: {
+        boxSize?: number;
+        gapWidth?: number;
+        marginLeft?: number;
+        boxColor?: ColorValue;
+    };
+}
+export type TextShortcutStyle = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'inline_code' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'blockquote' | 'codeblock' | 'unordered_list' | 'ordered_list' | 'checkbox_list';
+export interface TextShortcut {
+    trigger: string;
+    style: TextShortcutStyle;
+}
+export interface OnChangeTextEvent {
+    value: string;
+}
+export interface OnChangeHtmlEvent {
+    value: string;
+}
+export interface OnChangeStateEvent {
+    bold: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    italic: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    underline: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    strikeThrough: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    inlineCode: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    h1: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    h2: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    h3: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    h4: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    h5: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    h6: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    codeBlock: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    blockQuote: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    orderedList: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    unorderedList: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    link: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    image: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    mention: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    checkboxList: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    highlight: {
+        isActive: boolean;
+        isConflicting: boolean;
+        isBlocking: boolean;
+    };
+    alignment: string;
+}
+export interface OnLinkDetected {
+    text: string;
+    url: string;
+    start: number;
+    end: number;
+}
+export interface OnMentionDetected {
+    text: string;
+    indicator: string;
+    attributes: Record<string, string>;
+}
+export interface OnChangeSelectionEvent {
+    start: number;
+    end: number;
+    text: string;
+    /** Bounding rect of the selection's first line, in the editor view's
+     *  coordinate space (points). All zero when the selection is collapsed.
+     *  Consumers use it to anchor a popover above the highlighted text. */
+    rectX: number;
+    rectY: number;
+    rectWidth: number;
+    rectHeight: number;
+}
+export interface OnKeyPressEvent {
+    key: string;
+}
+export interface OnPasteImagesEvent {
+    images: {
+        uri: string;
+        type: string;
+        width: number;
+        height: number;
+    }[];
+}
+export interface OnSubmitEditing {
+    text: string;
+}
+export type FocusEvent = NativeSyntheticEvent<TargetedEvent>;
+export type BlurEvent = NativeSyntheticEvent<TargetedEvent>;
+export interface EnrichedTextInputInstance extends NativeMethods {
+    focus: () => void;
+    blur: () => void;
+    setValue: (value: string) => void;
+    /** Insert / replace plain text at the current selection (or caret). */
+    insertText: (text: string) => void;
+    setSelection: (start: number, end: number) => void;
+    getHTML: () => Promise<string>;
+    toggleBold: () => void;
+    toggleItalic: () => void;
+    toggleUnderline: () => void;
+    toggleStrikeThrough: () => void;
+    toggleInlineCode: () => void;
+    toggleH1: () => void;
+    toggleH2: () => void;
+    toggleH3: () => void;
+    toggleH4: () => void;
+    toggleH5: () => void;
+    toggleH6: () => void;
+    toggleCodeBlock: () => void;
+    toggleBlockQuote: () => void;
+    toggleOrderedList: () => void;
+    toggleUnorderedList: () => void;
+    toggleCheckboxList: (checked: boolean) => void;
+    /** Raise the nesting depth of the list item containing the caret by one
+     *  level. No-op outside a list and at the configured maximum depth. */
+    indentList: () => void;
+    /** Lower the nesting depth of the list item containing the caret by one
+     *  level. At depth 0 the item leaves the list (becomes a plain paragraph),
+     *  consistent with how Enter on an empty list item collapses the list. */
+    outdentList: () => void;
+    setLink: (start: number, end: number, text: string, url: string) => void;
+    removeLink: (start: number, end: number) => void;
+    /** Applies a background-color (#RRGGBB) over the range. The native
+     *  HighlightStyle stores it as NSBackgroundColorAttributeName and the
+     *  serializer emits `<mark style="background-color:#RRGGBB;">…</mark>`. */
+    setHighlight: (start: number, end: number, color: string) => void;
+    /** Strips any highlight in the range without touching other attributes. */
+    removeHighlight: (start: number, end: number) => void;
+    setImage: (src: string, width: number, height: number) => void;
+    startMention: (indicator: string) => void;
+    setMention: (indicator: string, text: string, attributes?: Record<string, string>) => void;
+    setTextAlignment: (alignment: 'left' | 'center' | 'right' | 'justify' | 'auto') => void;
+}
+export interface ContextMenuItem {
+    text: string;
+    onPress: ({ text, selection, styleState, }: {
+        text: string;
+        selection: {
+            start: number;
+            end: number;
+        };
+        styleState: OnChangeStateEvent;
+    }) => void;
+    visible?: boolean;
+}
+export interface OnChangeMentionEvent {
+    indicator: string;
+    text: string;
+}
+export interface EnrichedTextInputProps extends Omit<ViewProps, 'children'> {
+    ref?: RefObject<EnrichedTextInputInstance | null>;
+    autoFocus?: boolean;
+    editable?: boolean;
+    mentionIndicators?: string[];
+    defaultValue?: string;
+    placeholder?: string;
+    placeholderTextColor?: ColorValue;
+    cursorColor?: ColorValue;
+    selectionColor?: ColorValue;
+    autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+    htmlStyle?: HtmlStyle;
+    style?: EnrichedInputStyle;
+    scrollEnabled?: boolean;
+    linkRegex?: RegExp | null;
+    returnKeyType?: ReturnKeyTypeOptions;
+    returnKeyLabel?: string;
+    submitBehavior?: 'submit' | 'blurAndSubmit' | 'newline';
+    onFocus?: (e: FocusEvent) => void;
+    onBlur?: (e: BlurEvent) => void;
+    onChangeText?: (e: NativeSyntheticEvent<OnChangeTextEvent>) => void;
+    onChangeHtml?: (e: NativeSyntheticEvent<OnChangeHtmlEvent>) => void;
+    onChangeState?: (e: NativeSyntheticEvent<OnChangeStateEvent>) => void;
+    onLinkDetected?: (e: OnLinkDetected) => void;
+    onMentionDetected?: (e: OnMentionDetected) => void;
+    onStartMention?: (indicator: string) => void;
+    onChangeMention?: (e: OnChangeMentionEvent) => void;
+    onEndMention?: (indicator: string) => void;
+    onChangeSelection?: (e: NativeSyntheticEvent<OnChangeSelectionEvent>) => void;
+    onKeyPress?: (e: NativeSyntheticEvent<OnKeyPressEvent>) => void;
+    onSubmitEditing?: (e: NativeSyntheticEvent<OnSubmitEditing>) => void;
+    /**
+     * Web: each `images[].uri` is a `blob:` URL from `URL.createObjectURL`. If you keep
+     * URIs around (or replace them after upload), call `URL.revokeObjectURL(uri)` when done
+     * to avoid retaining blob memory. Native uses non-blob URIs; revoke does not apply.
+     */
+    onPasteImages?: (e: NativeSyntheticEvent<OnPasteImagesEvent>) => void;
+    contextMenuItems?: ContextMenuItem[];
+    /** When true, suppress the native iOS edit menu (Cut/Copy/Paste/Look Up) on
+     *  text selection. Set this when rendering your own selection toolbar so the
+     *  user doesn't see two overlapping menus. */
+    disableNativeSelectionMenu?: boolean;
+    textShortcuts?: TextShortcut[];
+    /**
+     * If true, Android will use experimental synchronous events.
+     * This will prevent from input flickering when updating component size.
+     * However, this is an experimental feature, which has not been thoroughly tested.
+     * We may decide to enable it by default in a future release.
+     * Disabled by default.
+     */
+    androidExperimentalSynchronousEvents?: boolean;
+    /**
+     * If true, external HTML (e.g. from Google Docs, Word, web pages) will be
+     * normalized through the HTML normalizer before being applied.
+     * This converts arbitrary HTML into the canonical tag subset that the enriched
+     * parser understands.
+     * Disabled by default.
+     */
+    useHtmlNormalizer?: boolean;
+    /**
+     * If true, fonts will scale to respect the system's accessibility text size.
+     * Enabled by default.
+     */
+    allowFontScaling?: boolean;
+}
+export interface EnrichedTextInstance extends NativeMethods {
+}
+export interface EnrichedTextProps extends ViewProps {
+    ref?: RefObject<EnrichedTextInstance | null>;
+    children: string;
+    style?: TextStyle;
+    htmlStyle?: EnrichedTextHtmlStyle;
+    useHtmlNormalizer?: boolean;
+    ellipsizeMode?: 'head' | 'middle' | 'tail' | 'clip';
+    numberOfLines?: number;
+    selectable?: boolean;
+    selectionColor?: ColorValue;
+    /**
+     * If true, fonts will scale to respect the system's accessibility text size.
+     * Enabled by default.
+     */
+    allowFontScaling?: boolean;
+    onLinkPress?: (event: OnLinkPressEvent) => void;
+    onMentionPress?: (event: OnMentionPressEvent) => void;
+}
+interface EnrichedTextMentionStyleProperties extends MentionStyleProperties {
+    pressColor?: ColorValue;
+    pressBackgroundColor?: ColorValue;
+}
+export interface EnrichedTextHtmlStyle extends Omit<HtmlStyle, 'a' | 'mention'> {
+    a?: HtmlStyle['a'] & {
+        pressColor?: ColorValue;
+    };
+    mention?: Record<string, EnrichedTextMentionStyleProperties> | EnrichedTextMentionStyleProperties;
+}
+export interface OnLinkPressEvent {
+    url: string;
+}
+export interface OnMentionPressEvent {
+    text: string;
+    indicator: string;
+    attributes: Record<string, string>;
+}
+export {};
+//# sourceMappingURL=types.d.ts.map

@@ -1,0 +1,1 @@
+{"version":3,"file":"returnKeyTypeToEnterKeyHint.d.ts","sourceRoot":"","sources":["../../../../src/web/returnKeyTypeToEnterKeyHint.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,cAAc,CAAC;AAGzD,MAAM,MAAM,YAAY,GACpB,OAAO,GACP,MAAM,GACN,IAAI,GACJ,MAAM,GACN,UAAU,GACV,QAAQ,GACR,MAAM,CAAC;AAIX,wBAAgB,2BAA2B,CACzC,aAAa,EAAE,oBAAoB,GAAG,SAAS,GAC9C,YAAY,CAYd"}

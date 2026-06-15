@@ -1,0 +1,4 @@
+import './EnrichedTextInput.css';
+import type { EnrichedTextInputProps } from '../types';
+export declare const EnrichedTextInput: ({ ref, defaultValue, autoFocus, editable, placeholder, placeholderTextColor, cursorColor, selectionColor, autoCapitalize, scrollEnabled, mentionIndicators, onFocus, style, onBlur, onChangeSelection, onKeyPress, onChangeText, onChangeHtml, onChangeState, onLinkDetected, onSubmitEditing, returnKeyType, submitBehavior, onPasteImages, onMentionDetected, onStartMention, onChangeMention, onEndMention, htmlStyle, }: EnrichedTextInputProps) => import("react/jsx-runtime").JSX.Element;
+//# sourceMappingURL=EnrichedTextInput.d.ts.map
