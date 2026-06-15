@@ -82,9 +82,10 @@ android/keystores/debug.keystore
 # Vite build output
 dist/
 
-# React Native Codegen
-ios/generated
-android/generated
+# React Native Codegen — tracked so EAS has the pre-generated headers
+# (codegenConfig.includesGeneratedCode=true tells RN not to regenerate)
+# ios/generated
+# android/generated
 
 # React Native Nitro Modules
 nitrogen/
