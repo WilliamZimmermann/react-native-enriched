@@ -479,6 +479,62 @@ class EnrichedTextInputViewManager :
     view?.setTextAlignment(alignment)
   }
 
+  // ---------------------------------------------------------------------------
+  // Selection-toolbar commands/props — currently iOS-only.
+  //
+  // These were added to the shared codegen spec by the iOS selection-toolbar
+  // work (highlight, nested list indent/outdent, insertText, native selection
+  // menu suppression). The Android view does not implement the underlying
+  // behavior yet, so these are no-op stubs that satisfy the generated
+  // EnrichedTextInputViewManagerInterface and keep the Android build compiling.
+  //
+  // Their only callers in this app are the tablet editor components, which are
+  // disabled behind feature flags, so the no-op behavior is not observable on
+  // the active (phone) UI.
+  //
+  // TODO(android-tablet): port the real implementations from iOS before
+  // re-enabling the tablet selection toolbar on Android.
+  // ---------------------------------------------------------------------------
+
+  override fun setDisableNativeSelectionMenu(
+    view: EnrichedTextInputView?,
+    value: Boolean,
+  ) {
+    // No-op: native selection menu suppression not implemented on Android yet.
+  }
+
+  override fun insertText(
+    view: EnrichedTextInputView?,
+    text: String?,
+  ) {
+    // No-op: programmatic text insertion not implemented on Android yet.
+  }
+
+  override fun indentList(view: EnrichedTextInputView?) {
+    // No-op: nested list indentation not implemented on Android yet.
+  }
+
+  override fun outdentList(view: EnrichedTextInputView?) {
+    // No-op: nested list outdentation not implemented on Android yet.
+  }
+
+  override fun addHighlight(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    color: String?,
+  ) {
+    // No-op: per-selection highlight spans not implemented on Android yet.
+  }
+
+  override fun removeHighlight(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+  ) {
+    // No-op: per-selection highlight spans not implemented on Android yet.
+  }
+
   override fun measure(
     context: Context,
     localData: ReadableMap?,
