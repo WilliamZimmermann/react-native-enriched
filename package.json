@@ -59,7 +59,7 @@
     "lint-clang": "yarn lint-clang:ios && yarn lint-clang:android",
     "lint-clang:fix": "yarn lint-clang:ios:fix && yarn lint-clang:android:fix",
     "clean": "./scripts/git-clean.sh",
-    "prepare": "bob build",
+    "build": "bob build",
     "release": "release-it",
     "android-studio": "open -a 'Android Studio' apps/example/android",
     "xcode": "open -a 'Xcode' apps/example/ios/EnrichedTextInputExample.xcworkspace",
