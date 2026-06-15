@@ -70,11 +70,12 @@ class AsyncDrawable(
     if (token == null) {
       return URL(url).openStream().use { it.readBytes() }
     }
-    val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-      setRequestProperty("Authorization", "Bearer $token")
-      connectTimeout = 15000
-      readTimeout = 15000
-    }
+    val conn =
+      (URL(url).openConnection() as HttpURLConnection).apply {
+        setRequestProperty("Authorization", "Bearer $token")
+        connectTimeout = 15000
+        readTimeout = 15000
+      }
     return try {
       if (conn.responseCode in 200..299) {
         conn.inputStream.use { it.readBytes() }
