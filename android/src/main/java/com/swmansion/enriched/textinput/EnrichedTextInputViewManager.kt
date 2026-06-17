@@ -339,6 +339,13 @@ class EnrichedTextInputViewManager :
     view?.clearFocus()
   }
 
+  // Undo / redo are wired natively on iOS (UITextView's undo manager). Android
+  // isn't a tablet target yet, so these are no-ops here; the system EditText
+  // still offers its own undo via a hardware keyboard.
+  override fun undo(view: EnrichedTextInputView?) {}
+
+  override fun redo(view: EnrichedTextInputView?) {}
+
   override fun setValue(
     view: EnrichedTextInputView?,
     text: String,

@@ -10,4 +10,8 @@
 // pStyle on the next text insertion, producing the visual "indent that
 // flickers back" symptom.
 - (void)katavSyncTypingAttributesToCurrentParagraph;
+// Undo / redo the most recent edit via the built-in undo manager. Invoked by
+// the Cmd-Z / Cmd-Y key commands and by the JS `undo` / `redo` commands.
+- (void)katavUndo;
+- (void)katavRedo;
 @end

@@ -440,6 +440,9 @@ interface NativeCommands {
   // General commands
   focus: (viewRef: React.ElementRef<ComponentType>) => void;
   blur: (viewRef: React.ElementRef<ComponentType>) => void;
+  // Undo / redo the most recent text edit (backed by the native undo manager).
+  undo: (viewRef: React.ElementRef<ComponentType>) => void;
+  redo: (viewRef: React.ElementRef<ComponentType>) => void;
   setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
   // Insert / replace plain text at the current selection (or caret).
   insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
@@ -541,6 +544,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     // General commands
     'focus',
     'blur',
+    'undo',
+    'redo',
     'setValue',
     'insertText',
     'setSelection',

@@ -126,6 +126,12 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "blur":
         mViewManager.blur(view);
         break;
+      case "undo":
+        mViewManager.undo(view);
+        break;
+      case "redo":
+        mViewManager.redo(view);
+        break;
       case "setValue":
         mViewManager.setValue(view, args.getString(0));
         break;

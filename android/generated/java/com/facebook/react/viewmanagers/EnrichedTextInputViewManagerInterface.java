@@ -47,6 +47,8 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void setUseHtmlNormalizer(T view, boolean value);
   void focus(T view);
   void blur(T view);
+  void undo(T view);
+  void redo(T view);
   void setValue(T view, String text);
   void insertText(T view, String text);
   void setSelection(T view, int start, int end);

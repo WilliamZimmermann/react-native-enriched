@@ -1241,6 +1241,14 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     [self focus];
   } else if ([commandName isEqualToString:@"blur"]) {
     [self blur];
+  } else if ([commandName isEqualToString:@"undo"]) {
+    // `textView` ivar is the concrete EnrichedInputTextView; the `self.textView`
+    // getter is typed UITextView (EnrichedViewHost) and wouldn't see katavUndo.
+    [textView katavUndo];
+    [self anyTextMayHaveBeenModified];
+  } else if ([commandName isEqualToString:@"redo"]) {
+    [textView katavRedo];
+    [self anyTextMayHaveBeenModified];
   } else if ([commandName isEqualToString:@"setValue"]) {
     NSString *value = (NSString *)args[0];
     [self setValue:value];

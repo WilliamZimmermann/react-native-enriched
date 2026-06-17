@@ -417,14 +417,37 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
       [UIKeyCommand keyCommandWithInput:@"\t"
                           modifierFlags:UIKeyModifierShift
                                  action:@selector(katavHandleShiftTab:)];
+  // Hardware-keyboard undo / redo. UITextView registers typed text with its
+  // built-in undoManager automatically, but the Cmd-Z shortcut isn't surfaced
+  // reliably when the view is hosted in a Fabric component, so we register it
+  // explicitly and route it to the same undo path as the toolbar buttons.
+  //   Cmd-Z        → undo
+  //   Cmd-Shift-Z  → redo  (macOS / iPadOS convention)
+  //   Cmd-Y        → redo  (external Windows-keyboard convention)
+  UIKeyCommand *undo =
+      [UIKeyCommand keyCommandWithInput:@"z"
+                          modifierFlags:UIKeyModifierCommand
+                                 action:@selector(katavHandleUndo:)];
+  UIKeyCommand *redoShiftZ =
+      [UIKeyCommand keyCommandWithInput:@"z"
+                          modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
+                                 action:@selector(katavHandleRedo:)];
+  UIKeyCommand *redoY =
+      [UIKeyCommand keyCommandWithInput:@"y"
+                          modifierFlags:UIKeyModifierCommand
+                                 action:@selector(katavHandleRedo:)];
   // wantsPriorityOverSystemBehavior makes UIKit prefer our command over
   // built-in Tab/Shift-Tab semantics (e.g. focus traversal) when this view
   // is first responder. Available since iOS 15.
   if ([tab respondsToSelector:@selector(setWantsPriorityOverSystemBehavior:)]) {
     tab.wantsPriorityOverSystemBehavior = YES;
     shiftTab.wantsPriorityOverSystemBehavior = YES;
+    undo.wantsPriorityOverSystemBehavior = YES;
+    redoShiftZ.wantsPriorityOverSystemBehavior = YES;
+    redoY.wantsPriorityOverSystemBehavior = YES;
   }
-  return [base arrayByAddingObjectsFromArray:@[ tab, shiftTab ]];
+  return [base
+      arrayByAddingObjectsFromArray:@[ tab, shiftTab, undo, redoShiftZ, redoY ]];
 }
 
 - (void)katavHandleTab:(UIKeyCommand *)cmd {
@@ -433,6 +456,30 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
 
 - (void)katavHandleShiftTab:(UIKeyCommand *)cmd {
   [self katavApplyListIndentDelta:-1];
+}
+
+- (void)katavHandleUndo:(UIKeyCommand *)cmd {
+  [self katavUndo];
+}
+
+- (void)katavHandleRedo:(UIKeyCommand *)cmd {
+  [self katavRedo];
+}
+
+// Undo / redo backed by UITextView's built-in undo manager. Typed text is
+// registered there automatically; these revert / reapply the last edit. The
+// wrapper's textViewDidChange: fires on the resulting change and re-emits the
+// HTML so JS autosave stays in sync.
+- (void)katavUndo {
+  if (self.undoManager.canUndo) {
+    [self.undoManager undo];
+  }
+}
+
+- (void)katavRedo {
+  if (self.undoManager.canRedo) {
+    [self.undoManager redo];
+  }
 }
 
 // Long-press-to-open. Fires once when the user has been holding for the

@@ -16,6 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol RCTEnrichedTextInputViewViewProtocol <NSObject>
 - (void)focus;
 - (void)blur;
+- (void)undo;
+- (void)redo;
 - (void)setValue:(NSString *)text;
 - (void)insertText:(NSString *)text;
 - (void)setSelection:(NSInteger)start end:(NSInteger)end;
@@ -80,6 +82,34 @@ if ([commandName isEqualToString:@"blur"]) {
   
 
   [componentView blur];
+  return;
+}
+
+if ([commandName isEqualToString:@"undo"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView undo];
+  return;
+}
+
+if ([commandName isEqualToString:@"redo"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView redo];
   return;
 }
 

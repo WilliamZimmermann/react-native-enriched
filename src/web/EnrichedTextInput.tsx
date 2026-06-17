@@ -320,6 +320,8 @@ export const EnrichedTextInput = ({
     (): EnrichedTextInputInstance => ({
       focus: () => editor.commands.focus(),
       blur: () => editor.commands.blur(),
+      undo: () => runFocused(editor, (c) => c.undo()),
+      redo: () => runFocused(editor, (c) => c.redo()),
       setValue: (value: string) =>
         editor.commands.setContent(prepareHtmlForTiptap(value)),
       insertText: (text: string) =>

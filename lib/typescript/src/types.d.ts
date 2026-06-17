@@ -374,6 +374,9 @@ export type BlurEvent = NativeSyntheticEvent<TargetedEvent>;
 export interface EnrichedTextInputInstance extends NativeMethods {
     focus: () => void;
     blur: () => void;
+    /** Undo / redo the most recent text edit (native undo manager). */
+    undo: () => void;
+    redo: () => void;
     setValue: (value: string) => void;
     /** Insert / replace plain text at the current selection (or caret). */
     insertText: (text: string) => void;

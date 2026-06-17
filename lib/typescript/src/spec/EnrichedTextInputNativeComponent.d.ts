@@ -388,6 +388,8 @@ type ComponentType = HostComponent<NativeProps>;
 interface NativeCommands {
     focus: (viewRef: React.ElementRef<ComponentType>) => void;
     blur: (viewRef: React.ElementRef<ComponentType>) => void;
+    undo: (viewRef: React.ElementRef<ComponentType>) => void;
+    redo: (viewRef: React.ElementRef<ComponentType>) => void;
     setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     setSelection: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
