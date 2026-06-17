@@ -503,6 +503,22 @@ interface NativeCommands {
     viewRef: React.ElementRef<ComponentType>,
     requestId: Int32
   ) => void;
+  // Serialize the [start, end) range to an HTML fragment, returned via the
+  // same onGetHtml event keyed by requestId.
+  requestSelectionHTML: (
+    viewRef: React.ElementRef<ComponentType>,
+    requestId: Int32,
+    start: Int32,
+    end: Int32
+  ) => void;
+  // Replace the [start, end) range with a parsed HTML fragment (preserves
+  // the fragment's formatting — headings, lists, bold/italic, etc.).
+  replaceSelectionWithHtml: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    html: string
+  ) => void;
   setTextAlignment: (
     viewRef: React.ElementRef<ComponentType>,
     alignment: string
@@ -554,6 +570,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'startMention',
     'addMention',
     'requestHTML',
+    'requestSelectionHTML',
+    'replaceSelectionWithHtml',
     'setTextAlignment',
     'addHighlight',
     'removeHighlight',

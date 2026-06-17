@@ -1016,6 +1016,45 @@ class EnrichedTextInputView :
     dispatcher?.dispatchEvent(OnRequestHtmlResultEvent(surfaceId, id, requestId, html, experimentalSynchronousEvents))
   }
 
+  // Serialize the [start, end) range to an HTML fragment, returned via the same
+  // onRequestHtmlResult event keyed by requestId.
+  fun requestSelectionHTML(requestId: Int, visibleStart: Int, visibleEnd: Int) {
+    val html =
+      try {
+        val spannable = text as Spannable
+        val start = getActualIndex(visibleStart).coerceIn(0, spannable.length)
+        val end = getActualIndex(visibleEnd).coerceIn(start, spannable.length)
+        val selected = spannable.subSequence(start, end) as Spannable
+        EnrichedParser.toHtml(selected)
+      } catch (_: Exception) {
+        null
+      }
+
+    val reactContext = context as ReactContext
+    val surfaceId = UIManagerHelper.getSurfaceId(reactContext)
+    val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(reactContext, id)
+    dispatcher?.dispatchEvent(OnRequestHtmlResultEvent(surfaceId, id, requestId, html, experimentalSynchronousEvents))
+  }
+
+  // Replace the [start, end) range with a parsed HTML fragment, preserving the
+  // fragment's formatting. Mirrors the rich-paste merge path.
+  fun replaceSelectionWithHtml(visibleStart: Int, visibleEnd: Int, html: String) {
+    val currentText = text as Spannable
+    val start = getActualIndex(visibleStart).coerceIn(0, currentText.length)
+    val end = getActualIndex(visibleEnd).coerceIn(start, currentText.length)
+    val lengthBefore = currentText.length
+
+    // parseText only treats the input as HTML when wrapped in <html>…</html>;
+    // the AI returns a bare fragment, so wrap it here.
+    val parsed = parseText("<html>$html</html>") as? Spannable ?: return
+    val finalText = currentText.mergeSpannables(start, end, parsed, htmlStyle)
+    setValue(finalText, false)
+
+    val insertedLength = finalText.length - (lengthBefore - (end - start))
+    val caret = (start + insertedLength).coerceIn(0, finalText.length)
+    setSelection(caret)
+  }
+
   // Sometimes setting up style triggers many changes in sequence
   // Eg. removing conflicting styles -> changing text -> applying spans
   // In such scenario we want to prevent from handling side effects (eg. onTextChanged)

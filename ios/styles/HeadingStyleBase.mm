@@ -48,6 +48,30 @@
                                                        value:newFont
                                                        range:subRange];
               }];
+
+  // Give headings vertical breathing room so they don't butt against the
+  // surrounding paragraphs (e.g. the blocks an AI "Organize" inserts). Spacing
+  // scales with the heading size. Merge into the existing paragraph style so
+  // alignment / line spacing are preserved.
+  CGFloat headingSize = [self getHeadingFontSize];
+  if (headingSize > 0 && range.length > 0) {
+    [self.host.textView.textStorage
+        enumerateAttribute:NSParagraphStyleAttributeName
+                   inRange:range
+                   options:0
+                usingBlock:^(id _Nullable value, NSRange subRange,
+                             BOOL *_Nonnull stop) {
+                  NSMutableParagraphStyle *para =
+                      value != nil ? [(NSParagraphStyle *)value mutableCopy]
+                                   : [[NSMutableParagraphStyle alloc] init];
+                  para.paragraphSpacingBefore = headingSize * 0.6;
+                  para.paragraphSpacing = headingSize * 0.3;
+                  [self.host.textView.textStorage
+                      addAttribute:NSParagraphStyleAttributeName
+                             value:para
+                             range:subRange];
+                }];
+  }
 }
 
 - (void)applyStylingToTypingAttrs:(NSMutableDictionary *)attributes {

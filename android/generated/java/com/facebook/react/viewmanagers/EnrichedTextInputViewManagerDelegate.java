@@ -207,6 +207,12 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "requestHTML":
         mViewManager.requestHTML(view, args.getInt(0));
         break;
+      case "requestSelectionHTML":
+        mViewManager.requestSelectionHTML(view, args.getInt(0), args.getInt(1), args.getInt(2));
+        break;
+      case "replaceSelectionWithHtml":
+        mViewManager.replaceSelectionWithHtml(view, args.getInt(0), args.getInt(1), args.getString(2));
+        break;
       case "setTextAlignment":
         mViewManager.setTextAlignment(view, args.getString(0));
         break;

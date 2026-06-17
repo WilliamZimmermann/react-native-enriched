@@ -415,6 +415,8 @@ interface NativeCommands {
     startMention: (viewRef: React.ElementRef<ComponentType>, indicator: string) => void;
     addMention: (viewRef: React.ElementRef<ComponentType>, indicator: string, text: string, payload: string) => void;
     requestHTML: (viewRef: React.ElementRef<ComponentType>, requestId: Int32) => void;
+    requestSelectionHTML: (viewRef: React.ElementRef<ComponentType>, requestId: Int32, start: Int32, end: Int32) => void;
+    replaceSelectionWithHtml: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, html: string) => void;
     setTextAlignment: (viewRef: React.ElementRef<ComponentType>, alignment: string) => void;
     addHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, color: string) => void;
     removeHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;

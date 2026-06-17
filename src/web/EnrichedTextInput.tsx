@@ -6,6 +6,7 @@ import {
   type CSSProperties,
 } from 'react';
 import './EnrichedTextInput.css';
+import { DOMSerializer } from '@tiptap/pm/model';
 import type { Node } from '@tiptap/pm/model';
 import type {
   EnrichedTextInputInstance,
@@ -333,6 +334,31 @@ export const EnrichedTextInput = ({
         );
       },
       getHTML: () => Promise.resolve(normalizeHtmlFromTiptap(editor.getHTML())),
+      getSelectionHtml: (start: number, end: number) => {
+        const doc = editor.state.doc;
+        const slice = doc.slice(
+          nativePosToTiptapPos(doc, start),
+          nativePosToTiptapPos(doc, end)
+        );
+        const fragment = DOMSerializer.fromSchema(
+          editor.schema
+        ).serializeFragment(slice.content);
+        const div = document.createElement('div');
+        div.appendChild(fragment);
+        return Promise.resolve(normalizeHtmlFromTiptap(div.innerHTML));
+      },
+      replaceSelectionWithHtml: (start: number, end: number, html: string) => {
+        const doc = editor.state.doc;
+        runFocused(editor, (c) =>
+          c.insertContentAt(
+            {
+              from: nativePosToTiptapPos(doc, start),
+              to: nativePosToTiptapPos(doc, end),
+            },
+            prepareHtmlForTiptap(html)
+          )
+        );
+      },
       toggleBold: () => runFocused(editor, (c) => c.toggleBold()),
       toggleItalic: () => runFocused(editor, (c) => c.toggleItalic()),
       toggleUnderline: () => runFocused(editor, (c) => c.toggleUnderline()),

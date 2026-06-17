@@ -435,6 +435,11 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   insertText: (text: string) => void;
   setSelection: (start: number, end: number) => void;
   getHTML: () => Promise<string>;
+  /** Serialize the [start, end) range to an HTML fragment. */
+  getSelectionHtml: (start: number, end: number) => Promise<string>;
+  /** Replace the [start, end) range with a parsed HTML fragment, preserving
+   *  the fragment's formatting (headings, lists, bold/italic, etc.). */
+  replaceSelectionWithHtml: (start: number, end: number, html: string) => void;
 
   // Text formatting commands
   toggleBold: () => void;

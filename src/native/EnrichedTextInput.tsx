@@ -194,6 +194,26 @@ export const EnrichedTextInput = ({
         Commands.requestHTML(nullthrows(nativeRef.current), requestId);
       });
     },
+    getSelectionHtml: (start: number, end: number) => {
+      return new Promise<string>((resolve, reject) => {
+        const requestId = nextHtmlRequestId.current++;
+        pendingHtmlRequests.current.set(requestId, { resolve, reject });
+        Commands.requestSelectionHTML(
+          nullthrows(nativeRef.current),
+          requestId,
+          start,
+          end
+        );
+      });
+    },
+    replaceSelectionWithHtml: (start: number, end: number, html: string) => {
+      Commands.replaceSelectionWithHtml(
+        nullthrows(nativeRef.current),
+        start,
+        end,
+        html
+      );
+    },
     toggleBold: () => {
       Commands.toggleBold(nullthrows(nativeRef.current));
     },

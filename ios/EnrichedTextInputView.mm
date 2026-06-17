@@ -1324,6 +1324,16 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"requestHTML"]) {
     NSInteger requestId = [((NSNumber *)args[0]) integerValue];
     [self requestHTML:requestId];
+  } else if ([commandName isEqualToString:@"requestSelectionHTML"]) {
+    NSInteger requestId = [((NSNumber *)args[0]) integerValue];
+    NSInteger start = [((NSNumber *)args[1]) integerValue];
+    NSInteger end = [((NSNumber *)args[2]) integerValue];
+    [self requestSelectionHTML:requestId start:start end:end];
+  } else if ([commandName isEqualToString:@"replaceSelectionWithHtml"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    NSString *html = (NSString *)args[2];
+    [self replaceSelectionWithHtml:start end:end html:html];
   } else if ([commandName isEqualToString:@"setTextAlignment"]) {
     NSString *alignmentString = (NSString *)args[0];
 
@@ -1536,6 +1546,43 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
                                     .html = folly::dynamic(nullptr)});
     }
   }
+}
+
+// Serialize the [start, end) range to an HTML fragment and return it via the
+// same onRequestHtmlResult event, keyed by requestId.
+- (void)requestSelectionHTML:(NSInteger)requestId
+                       start:(NSInteger)visibleStart
+                         end:(NSInteger)visibleEnd {
+  auto emitter = [self getEventEmitter];
+  if (emitter == nullptr) {
+    return;
+  }
+  @try {
+    NSString *text = textView.textStorage.string;
+    NSUInteger actualStart = [self getActualIndex:visibleStart text:text];
+    NSUInteger actualEnd = [self getActualIndex:visibleEnd text:text];
+    NSRange range = NSMakeRange(
+        actualStart, actualEnd >= actualStart ? actualEnd - actualStart : 0);
+    NSString *htmlOutput = [HtmlParser parseToHtmlFromRange:range host:self];
+    emitter->onRequestHtmlResult({.requestId = static_cast<int>(requestId),
+                                  .html = [htmlOutput toCppString]});
+  } @catch (NSException *exception) {
+    emitter->onRequestHtmlResult({.requestId = static_cast<int>(requestId),
+                                  .html = folly::dynamic(nullptr)});
+  }
+}
+
+// Replace the [start, end) range with a parsed HTML fragment, preserving the
+// fragment's formatting. Reuses the existing InputHtmlParser range-replace.
+- (void)replaceSelectionWithHtml:(NSInteger)visibleStart
+                             end:(NSInteger)visibleEnd
+                            html:(NSString *)html {
+  NSString *text = textView.textStorage.string;
+  NSUInteger actualStart = [self getActualIndex:visibleStart text:text];
+  NSUInteger actualEnd = [self getActualIndex:visibleEnd text:text];
+  NSRange range = NSMakeRange(
+      actualStart, actualEnd >= actualStart ? actualEnd - actualStart : 0);
+  [parser replaceFromHtml:html range:range];
 }
 
 - (void)emitOnKeyPressEvent:(NSString *)key {

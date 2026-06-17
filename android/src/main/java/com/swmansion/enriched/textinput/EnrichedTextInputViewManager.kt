@@ -472,6 +472,24 @@ class EnrichedTextInputViewManager :
     view?.requestHTML(requestId)
   }
 
+  override fun requestSelectionHTML(
+    view: EnrichedTextInputView?,
+    requestId: Int,
+    start: Int,
+    end: Int,
+  ) {
+    view?.requestSelectionHTML(requestId, start, end)
+  }
+
+  override fun replaceSelectionWithHtml(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    html: String,
+  ) {
+    view?.replaceSelectionWithHtml(start, end, html)
+  }
+
   override fun setTextAlignment(
     view: EnrichedTextInputView?,
     alignment: String,

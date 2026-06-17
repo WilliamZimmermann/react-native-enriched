@@ -43,6 +43,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)startMention:(NSString *)indicator;
 - (void)addMention:(NSString *)indicator text:(NSString *)text payload:(NSString *)payload;
 - (void)requestHTML:(NSInteger)requestId;
+- (void)requestSelectionHTML:(NSInteger)requestId start:(NSInteger)start end:(NSInteger)end;
+- (void)replaceSelectionWithHtml:(NSInteger)start end:(NSInteger)end html:(NSString *)html;
 - (void)setTextAlignment:(NSString *)alignment;
 - (void)addHighlight:(NSInteger)start end:(NSInteger)end color:(NSString *)color;
 - (void)removeHighlight:(NSInteger)start end:(NSInteger)end;
@@ -588,6 +590,78 @@ if ([commandName isEqualToString:@"requestHTML"]) {
   NSInteger requestId = [(NSNumber *)arg0 intValue];
 
   [componentView requestHTML:requestId];
+  return;
+}
+
+if ([commandName isEqualToString:@"requestSelectionHTML"]) {
+#if RCT_DEBUG
+  if ([args count] != 3) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 3);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger requestId = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger start = [(NSNumber *)arg1 intValue];
+
+NSObject *arg2 = args[2];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg2, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"3rd")) {
+    return;
+  }
+#endif
+  NSInteger end = [(NSNumber *)arg2 intValue];
+
+  [componentView requestSelectionHTML:requestId start:start end:end];
+  return;
+}
+
+if ([commandName isEqualToString:@"replaceSelectionWithHtml"]) {
+#if RCT_DEBUG
+  if ([args count] != 3) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 3);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger start = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger end = [(NSNumber *)arg1 intValue];
+
+NSObject *arg2 = args[2];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg2, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"3rd")) {
+    return;
+  }
+#endif
+  NSString * html = (NSString *)arg2;
+
+  [componentView replaceSelectionWithHtml:start end:end html:html];
   return;
 }
 
