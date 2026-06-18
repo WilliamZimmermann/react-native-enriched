@@ -1242,8 +1242,9 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"blur"]) {
     [self blur];
   } else if ([commandName isEqualToString:@"undo"]) {
-    // `textView` ivar is the concrete EnrichedInputTextView; the `self.textView`
-    // getter is typed UITextView (EnrichedViewHost) and wouldn't see katavUndo.
+    // `textView` ivar is the concrete EnrichedInputTextView; the
+    // `self.textView` getter is typed UITextView (EnrichedViewHost) and
+    // wouldn't see katavUndo.
     [textView katavUndo];
     [self anyTextMayHaveBeenModified];
   } else if ([commandName isEqualToString:@"redo"]) {
@@ -1283,6 +1284,15 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"removeHighlight"]) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
+    [self removeHighlightAt:start end:end];
+  } else if ([commandName isEqualToString:@"clearFormatting"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    [self clearFormattingAt:start end:end];
+  } else if ([commandName isEqualToString:@"clearColors"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    // The only color formatting is highlight (background); reuse its removal.
     [self removeHighlightAt:start end:end];
   } else if ([commandName isEqualToString:@"addMention"]) {
     NSString *indicator = (NSString *)args[0];
@@ -1775,6 +1785,27 @@ static UIColor *katavParseHexColor(NSString *hex) {
   }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
   [highlightStyle removeHighlightInRange:range];
+  [self anyTextMayHaveBeenModified];
+}
+
+// Strip all inline formatting from the range by replacing it with its plain
+// text — the same path "paste as plain text" uses, so the new run carries the
+// default typing attributes (no bold/italic/link/highlight/etc.). Block
+// structure (heading/list/quote) of the surrounding paragraph is preserved.
+- (void)clearFormattingAt:(NSInteger)start end:(NSInteger)end {
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
+  NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
+  NSString *plainText = [textView.textStorage.string substringWithRange:range];
+  [TextInsertionUtils replaceText:plainText
+                               at:range
+             additionalAttributes:nullptr
+                             host:self
+                    withSelection:YES];
   [self anyTextMayHaveBeenModified];
 }
 

@@ -422,6 +422,8 @@ interface NativeCommands {
     setTextAlignment: (viewRef: React.ElementRef<ComponentType>, alignment: string) => void;
     addHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, color: string) => void;
     removeHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    clearFormatting: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    clearColors: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
 }
 export declare const Commands: NativeCommands;
 declare const _default: HostComponent<NativeProps>;

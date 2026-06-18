@@ -394,6 +394,12 @@ export const EnrichedTextInput = ({
       // host app, not in this vendor wrapper.
       setHighlight: (_start: number, _end: number, _color: string) => {},
       removeHighlight: (_start: number, _end: number) => {},
+      // Strip inline marks on the current selection. clearColors is a parity
+      // stub: highlight/color marks live in the host app's TipTap config, not
+      // this wrapper (same as setHighlight/removeHighlight above).
+      clearFormatting: (_start: number, _end: number) =>
+        runFocused(editor, (c) => c.unsetAllMarks()),
+      clearColors: (_start: number, _end: number) => {},
       startMention: (indicator: string) => {
         startMention(editor, indicator, mentionIndicatorsRef.current);
       },

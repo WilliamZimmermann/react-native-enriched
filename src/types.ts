@@ -437,6 +437,12 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   /** Insert / replace plain text at the current selection (or caret). */
   insertText: (text: string) => void;
   setSelection: (start: number, end: number) => void;
+  /** Strip all inline formatting (bold/italic/underline/strike/code/link/
+   *  highlight) from the [start, end) range, leaving plain text. */
+  clearFormatting: (start: number, end: number) => void;
+  /** Remove color/highlight from the [start, end) range, keeping other
+   *  formatting intact. */
+  clearColors: (start: number, end: number) => void;
   getHTML: () => Promise<string>;
   /** Serialize the [start, end) range to an HTML fragment. */
   getSelectionHtml: (start: number, end: number) => Promise<string>;

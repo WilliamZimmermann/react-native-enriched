@@ -537,6 +537,18 @@ interface NativeCommands {
     start: Int32,
     end: Int32
   ) => void;
+  // Strip inline formatting from the range (leaves plain text).
+  clearFormatting: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32
+  ) => void;
+  // Remove color/highlight from the range.
+  clearColors: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32
+  ) => void;
 }
 
 export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
@@ -580,6 +592,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'setTextAlignment',
     'addHighlight',
     'removeHighlight',
+    'clearFormatting',
+    'clearColors',
   ],
 });
 

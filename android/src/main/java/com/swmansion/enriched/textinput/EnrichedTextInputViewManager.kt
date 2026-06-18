@@ -560,6 +560,22 @@ class EnrichedTextInputViewManager :
     // No-op: per-selection highlight spans not implemented on Android yet.
   }
 
+  override fun clearFormatting(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+  ) {
+    // No-op: wired natively on iOS. Android isn't a tablet target yet.
+  }
+
+  override fun clearColors(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+  ) {
+    // No-op: wired natively on iOS. Android isn't a tablet target yet.
+  }
+
   override fun measure(
     context: Context,
     localData: ReadableMap?,

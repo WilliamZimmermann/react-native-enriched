@@ -50,6 +50,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setTextAlignment:(NSString *)alignment;
 - (void)addHighlight:(NSInteger)start end:(NSInteger)end color:(NSString *)color;
 - (void)removeHighlight:(NSInteger)start end:(NSInteger)end;
+- (void)clearFormatting:(NSInteger)start end:(NSInteger)end;
+- (void)clearColors:(NSInteger)start end:(NSInteger)end;
 @end
 
 RCT_EXTERN inline void RCTEnrichedTextInputViewHandleCommand(
@@ -776,6 +778,62 @@ NSObject *arg1 = args[1];
   NSInteger end = [(NSNumber *)arg1 intValue];
 
   [componentView removeHighlight:start end:end];
+  return;
+}
+
+if ([commandName isEqualToString:@"clearFormatting"]) {
+#if RCT_DEBUG
+  if ([args count] != 2) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 2);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger start = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger end = [(NSNumber *)arg1 intValue];
+
+  [componentView clearFormatting:start end:end];
+  return;
+}
+
+if ([commandName isEqualToString:@"clearColors"]) {
+#if RCT_DEBUG
+  if ([args count] != 2) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 2);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger start = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger end = [(NSNumber *)arg1 intValue];
+
+  [componentView clearColors:start end:end];
   return;
 }
 

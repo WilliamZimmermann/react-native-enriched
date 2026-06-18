@@ -286,6 +286,12 @@ export const EnrichedTextInput = ({
     removeHighlight: (start: number, end: number) => {
       Commands.removeHighlight(nullthrows(nativeRef.current), start, end);
     },
+    clearFormatting: (start: number, end: number) => {
+      Commands.clearFormatting(nullthrows(nativeRef.current), start, end);
+    },
+    clearColors: (start: number, end: number) => {
+      Commands.clearColors(nullthrows(nativeRef.current), start, end);
+    },
     setImage: (uri: string, width: number, height: number) => {
       Commands.addImage(nullthrows(nativeRef.current), uri, width, height);
     },
