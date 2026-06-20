@@ -63,6 +63,9 @@ using namespace facebook::react;
   NSString *_submitBehavior;
   NSDictionary<NSAttributedStringKey, id> *_capturedAttributesBeforeChange;
   NSString *_recentlyEmittedAlignment;
+  // The configured selection tint (from the selectionColor prop). Restored when
+  // the selection isn't over a highlight; see textViewDidChangeSelection:.
+  UIColor *_baseSelectionTintColor;
 }
 
 @synthesize blockEmitting = blockEmitting;
@@ -811,6 +814,9 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     } else {
       textView.tintColor = nullptr;
     }
+    // Remember the configured tint so textViewDidChangeSelection: can restore
+    // it after temporarily swapping to the over-highlight selection color.
+    _baseSelectionTintColor = textView.tintColor;
   }
 
   if (newViewProps.returnKeyType != oldViewProps.returnKeyType) {
@@ -2295,7 +2301,43 @@ static UIColor *katavParseHexColor(NSString *hex) {
   return YES;
 }
 
+// While the selection overlaps any highlighted (background-color) text, swap
+// the selection tint to translucent black so it stays visible against the
+// highlight; restore the configured tint otherwise. Fires on every selection
+// change, so the color updates live as the user drags the selection.
+- (void)updateSelectionTintForHighlightOverlap {
+  if (_baseSelectionTintColor == nil) {
+    _baseSelectionTintColor = textView.tintColor;
+  }
+  NSRange sel = textView.selectedRange;
+  UIColor *desired = _baseSelectionTintColor;
+  if (sel.length > 0 &&
+      sel.location + sel.length <= textView.textStorage.length) {
+    __block BOOL overlapsHighlight = NO;
+    [textView.textStorage enumerateAttribute:NSBackgroundColorAttributeName
+                                     inRange:sel
+                                     options:0
+                                  usingBlock:^(id _Nullable value, NSRange r,
+                                               BOOL *_Nonnull stop) {
+                                    if ([value isKindOfClass:[UIColor class]]) {
+                                      overlapsHighlight = YES;
+                                      *stop = YES;
+                                    }
+                                  }];
+    if (overlapsHighlight) {
+      // Opaque black — UITextView renders the selection fill at the system
+      // alpha, yielding a translucent black that reads over any highlight.
+      desired = [UIColor blackColor];
+    }
+  }
+  if (textView.tintColor != desired && ![textView.tintColor isEqual:desired]) {
+    textView.tintColor = desired;
+  }
+}
+
 - (void)textViewDidChangeSelection:(UITextView *)textView {
+  [self updateSelectionTintForHighlightOverlap];
+
   // emit the event
   NSString *textAtSelection =
       [[[NSMutableString alloc] initWithString:textView.textStorage.string]
