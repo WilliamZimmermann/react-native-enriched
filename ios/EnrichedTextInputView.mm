@@ -1803,10 +1803,18 @@ static UIColor *katavParseHexColor(NSString *hex) {
   [self anyTextMayHaveBeenModified];
 }
 
-// Strip all inline formatting from the range by replacing it with its plain
-// text — the same path "paste as plain text" uses, so the new run carries the
-// default typing attributes (no bold/italic/link/highlight/etc.). Block
-// structure (heading/list/quote) of the surrounding paragraph is preserved.
+// Strip inline text formatting (bold / italic / underline / strikethrough /
+// inline code) from the range, leaving paragraph structure (heading / list /
+// quote) intact.
+//
+// Inline styles are tracked as custom attributes (EnrichedBold, …); the visual
+// font traits are DERIVED from them by InputAttributesManager when it
+// reprocesses a dirty range. So clearing the visual attributes directly (or
+// re-inserting plain text) doesn't stick — the styling is rebuilt from the
+// custom attributes, which is why earlier attempts left bold in place. We
+// instead remove each style through the SAME path the toolbar uses to toggle it
+// off: drop the custom attribute and mark the range dirty so the manager
+// rebuilds the run without it.
 - (void)clearFormattingAt:(NSInteger)start end:(NSInteger)end {
   NSInteger textLength = (NSInteger)textView.textStorage.length;
   NSInteger rangeStart = MAX(0, MIN(start, end));
@@ -1815,12 +1823,20 @@ static UIColor *katavParseHexColor(NSString *hex) {
     return;
   }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
-  NSString *plainText = [textView.textStorage.string substringWithRange:range];
-  [TextInsertionUtils replaceText:plainText
-                               at:range
-             additionalAttributes:nullptr
-                             host:self
-                    withSelection:YES];
+  StyleType inlineTypes[] = {
+      [BoldStyle getType],       [ItalicStyle getType],
+      [UnderlineStyle getType],  [StrikethroughStyle getType],
+      [InlineCodeStyle getType],
+  };
+  for (NSUInteger i = 0; i < sizeof(inlineTypes) / sizeof(inlineTypes[0]);
+       i++) {
+    StyleBase *style = stylesDict[@(inlineTypes[i])];
+    if (style != nullptr) {
+      // remove: is a no-op where the style is absent and removes it wherever it
+      // occurs in the range — no need to pre-check coverage.
+      [style remove:range withDirtyRange:YES];
+    }
+  }
   [self anyTextMayHaveBeenModified];
 }
 
