@@ -1802,6 +1802,13 @@ static UIColor *katavParseHexColor(NSString *hex) {
   NSInteger rangeStart = MAX(0, MIN(start, end));
   NSInteger rangeEnd = MIN(textLength, MAX(start, end));
   if (rangeEnd <= rangeStart) {
+    // Empty/stale range from the toolbar (the editor can briefly lose the JS
+    // selection on tap) — fall back to the live native selection.
+    NSRange sel = textView.selectedRange;
+    rangeStart = (NSInteger)sel.location;
+    rangeEnd = MIN(textLength, (NSInteger)(sel.location + sel.length));
+  }
+  if (rangeEnd <= rangeStart) {
     return;
   }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
@@ -1809,9 +1816,9 @@ static UIColor *katavParseHexColor(NSString *hex) {
   [self anyTextMayHaveBeenModified];
 }
 
-// Strip inline text formatting (bold / italic / underline / strikethrough /
-// inline code) from the range, leaving paragraph structure (heading / list /
-// quote) intact.
+// Strip ALL inline formatting the user perceives — bold / italic / underline /
+// strikethrough / inline code / link AND highlight ("marcação") — from the
+// range, leaving paragraph structure (heading / list / quote) intact.
 //
 // Inline styles are tracked as custom attributes (EnrichedBold, …); the visual
 // font traits are DERIVED from them by InputAttributesManager when it
@@ -1820,19 +1827,29 @@ static UIColor *katavParseHexColor(NSString *hex) {
 // custom attributes, which is why earlier attempts left bold in place. We
 // instead remove each style through the SAME path the toolbar uses to toggle it
 // off: drop the custom attribute and mark the range dirty so the manager
-// rebuilds the run without it.
+// rebuilds the run without it. Highlight is the background-color attribute, so
+// it's dropped through its own removal path.
 - (void)clearFormattingAt:(NSInteger)start end:(NSInteger)end {
   NSInteger textLength = (NSInteger)textView.textStorage.length;
   NSInteger rangeStart = MAX(0, MIN(start, end));
   NSInteger rangeEnd = MIN(textLength, MAX(start, end));
   if (rangeEnd <= rangeStart) {
+    // Empty/stale range from the toolbar (the editor can briefly lose the JS
+    // selection on tap) — fall back to the live native selection.
+    NSRange sel = textView.selectedRange;
+    rangeStart = (NSInteger)sel.location;
+    rangeEnd = MIN(textLength, (NSInteger)(sel.location + sel.length));
+  }
+  if (rangeEnd <= rangeStart) {
     return;
   }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
+
+  // Inline styles (incl. link) via the toolbar's toggle-off path.
   StyleType inlineTypes[] = {
       [BoldStyle getType],       [ItalicStyle getType],
       [UnderlineStyle getType],  [StrikethroughStyle getType],
-      [InlineCodeStyle getType],
+      [InlineCodeStyle getType], [LinkStyle getType],
   };
   for (NSUInteger i = 0; i < sizeof(inlineTypes) / sizeof(inlineTypes[0]);
        i++) {
@@ -1843,6 +1860,15 @@ static UIColor *katavParseHexColor(NSString *hex) {
       [style remove:range withDirtyRange:YES];
     }
   }
+
+  // Highlight ("marcação") is the background-color attribute — drop it too so a
+  // single "clear formatting" tap removes everything the user sees.
+  HighlightStyle *highlightStyle =
+      (HighlightStyle *)stylesDict[@([HighlightStyle getType])];
+  if (highlightStyle != nullptr) {
+    [highlightStyle removeHighlightInRange:range];
+  }
+
   [self anyTextMayHaveBeenModified];
 }
 
@@ -2301,10 +2327,28 @@ static UIColor *katavParseHexColor(NSString *hex) {
   return YES;
 }
 
+// A deeper, more saturated variant of the given color (~half brightness). Used
+// for the selection tint over a highlight so the highlighted text reads as a
+// distinct, darker band within the selection.
+- (UIColor *)katavDeeperColor:(UIColor *)color {
+  if (color == nil) {
+    return nil;
+  }
+  CGFloat h, s, b, a;
+  if ([color getHue:&h saturation:&s brightness:&b alpha:&a]) {
+    return [UIColor colorWithHue:h
+                      saturation:MIN(1.0, s * 1.15)
+                      brightness:b * 0.5
+                           alpha:a];
+  }
+  return color;
+}
+
 // While the selection overlaps any highlighted (background-color) text, swap
-// the selection tint to translucent black so it stays visible against the
-// highlight; restore the configured tint otherwise. Fires on every selection
-// change, so the color updates live as the user drags the selection.
+// the selection tint to a deeper translucent green so the highlighted text
+// stays distinct against the highlight; restore the configured tint otherwise.
+// Fires on every selection change, so the color updates live as the user drags
+// the selection.
 - (void)updateSelectionTintForHighlightOverlap {
   if (_baseSelectionTintColor == nil) {
     _baseSelectionTintColor = textView.tintColor;
@@ -2325,9 +2369,15 @@ static UIColor *katavParseHexColor(NSString *hex) {
                                     }
                                   }];
     if (overlapsHighlight) {
-      // Opaque black — UITextView renders the selection fill at the system
-      // alpha, yielding a translucent black that reads over any highlight.
-      desired = [UIColor blackColor];
+      // Deeper green derived from the configured (green) selection tint —
+      // theme-aware, and reads as a darker band over the highlight. UITextView
+      // renders the selection fill at the system alpha, so this stays
+      // translucent. Fall back to a fixed deep green if the base isn't set.
+      desired = [self katavDeeperColor:_baseSelectionTintColor]
+                    ?: [UIColor colorWithRed:0.04
+                                       green:0.36
+                                        blue:0.21
+                                       alpha:1.0];
     }
   }
   if (textView.tintColor != desired && ![textView.tintColor isEqual:desired]) {
