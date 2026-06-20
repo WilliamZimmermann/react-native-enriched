@@ -454,6 +454,12 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
       [UIKeyCommand keyCommandWithInput:@"u"
                           modifierFlags:UIKeyModifierCommand
                                  action:@selector(katavHandleUnderline:)];
+  // Cmd-A → select all. UITextView has a built-in selectAll:, but (like Cmd-Z)
+  // it isn't surfaced reliably under Fabric, so register it explicitly.
+  UIKeyCommand *selectAll =
+      [UIKeyCommand keyCommandWithInput:@"a"
+                          modifierFlags:UIKeyModifierCommand
+                                 action:@selector(katavHandleSelectAll:)];
   // wantsPriorityOverSystemBehavior makes UIKit prefer our command over
   // built-in Tab/Shift-Tab semantics (e.g. focus traversal) when this view
   // is first responder. Available since iOS 15.
@@ -466,9 +472,10 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
     bold.wantsPriorityOverSystemBehavior = YES;
     italic.wantsPriorityOverSystemBehavior = YES;
     underline.wantsPriorityOverSystemBehavior = YES;
+    selectAll.wantsPriorityOverSystemBehavior = YES;
   }
   return [base arrayByAddingObjectsFromArray:@[
-    tab, shiftTab, undo, redoShiftZ, redoY, bold, italic, underline
+    tab, shiftTab, undo, redoShiftZ, redoY, bold, italic, underline, selectAll
   ]];
 }
 
@@ -501,6 +508,13 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
 
 - (void)katavHandleUnderline:(UIKeyCommand *)cmd {
   [(EnrichedTextInputView *)_input katavToggleUnderline];
+}
+
+- (void)katavHandleSelectAll:(UIKeyCommand *)cmd {
+  if (![self isFirstResponder]) {
+    [self becomeFirstResponder];
+  }
+  self.selectedRange = NSMakeRange(0, self.textStorage.length);
 }
 
 // Undo / redo backed by UITextView's built-in undo manager. Typed text is
