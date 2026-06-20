@@ -46,6 +46,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)emitOnPasteImagesEvent:(NSArray<NSDictionary *> *)images;
 - (void)anyTextMayHaveBeenModified;
 - (void)scheduleRelayoutIfNeeded;
+// Toggle inline styles from a hardware-keyboard shortcut (Cmd-B / Cmd-I /
+// Cmd-U). Routed to the same path as the toolbar buttons and JS commands so
+// state emission / autosave stay in sync. Kept param-free here so the public
+// header doesn't need the StyleType enum.
+- (void)katavToggleBold;
+- (void)katavToggleItalic;
+- (void)katavToggleUnderline;
 
 @end
 

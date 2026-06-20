@@ -1626,6 +1626,21 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   }
 }
 
+// Thin entry points for the Cmd-B/I/U key commands handled on the text view.
+// They route through the exact same path as the toolbar buttons and the JS
+// `toggleBold` / `toggleItalic` / `toggleUnderline` commands.
+- (void)katavToggleBold {
+  [self toggleRegularStyle:[BoldStyle getType]];
+}
+
+- (void)katavToggleItalic {
+  [self toggleRegularStyle:[ItalicStyle getType]];
+}
+
+- (void)katavToggleUnderline {
+  [self toggleRegularStyle:[UnderlineStyle getType]];
+}
+
 - (void)toggleCheckboxList:(BOOL)checked {
   CheckboxListStyle *style =
       (CheckboxListStyle *)stylesDict[@([CheckboxListStyle getType])];

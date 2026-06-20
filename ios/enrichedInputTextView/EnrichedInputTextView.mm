@@ -428,14 +428,32 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
       [UIKeyCommand keyCommandWithInput:@"z"
                           modifierFlags:UIKeyModifierCommand
                                  action:@selector(katavHandleUndo:)];
-  UIKeyCommand *redoShiftZ =
-      [UIKeyCommand keyCommandWithInput:@"z"
-                          modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
-                                 action:@selector(katavHandleRedo:)];
+  UIKeyCommand *redoShiftZ = [UIKeyCommand
+      keyCommandWithInput:@"z"
+            modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
+                   action:@selector(katavHandleRedo:)];
   UIKeyCommand *redoY =
       [UIKeyCommand keyCommandWithInput:@"y"
                           modifierFlags:UIKeyModifierCommand
                                  action:@selector(katavHandleRedo:)];
+  // Inline-format shortcuts. UITextView exposes system responders for these
+  // (toggleBoldface: / toggleItalics: / toggleUnderline:), but — like Cmd-Z —
+  // they aren't surfaced reliably when the view is hosted in a Fabric
+  // component, so we register them explicitly and route to the same toggle
+  // path as the toolbar buttons.
+  //   Cmd-B → bold   Cmd-I → italic   Cmd-U → underline
+  UIKeyCommand *bold =
+      [UIKeyCommand keyCommandWithInput:@"b"
+                          modifierFlags:UIKeyModifierCommand
+                                 action:@selector(katavHandleBold:)];
+  UIKeyCommand *italic =
+      [UIKeyCommand keyCommandWithInput:@"i"
+                          modifierFlags:UIKeyModifierCommand
+                                 action:@selector(katavHandleItalic:)];
+  UIKeyCommand *underline =
+      [UIKeyCommand keyCommandWithInput:@"u"
+                          modifierFlags:UIKeyModifierCommand
+                                 action:@selector(katavHandleUnderline:)];
   // wantsPriorityOverSystemBehavior makes UIKit prefer our command over
   // built-in Tab/Shift-Tab semantics (e.g. focus traversal) when this view
   // is first responder. Available since iOS 15.
@@ -445,9 +463,13 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
     undo.wantsPriorityOverSystemBehavior = YES;
     redoShiftZ.wantsPriorityOverSystemBehavior = YES;
     redoY.wantsPriorityOverSystemBehavior = YES;
+    bold.wantsPriorityOverSystemBehavior = YES;
+    italic.wantsPriorityOverSystemBehavior = YES;
+    underline.wantsPriorityOverSystemBehavior = YES;
   }
-  return [base
-      arrayByAddingObjectsFromArray:@[ tab, shiftTab, undo, redoShiftZ, redoY ]];
+  return [base arrayByAddingObjectsFromArray:@[
+    tab, shiftTab, undo, redoShiftZ, redoY, bold, italic, underline
+  ]];
 }
 
 - (void)katavHandleTab:(UIKeyCommand *)cmd {
@@ -464,6 +486,21 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
 
 - (void)katavHandleRedo:(UIKeyCommand *)cmd {
   [self katavRedo];
+}
+
+// Inline-format key commands. Route to the host (the manager owns the styling
+// engine + state emission); the `input` ivar is the concrete
+// EnrichedTextInputView host.
+- (void)katavHandleBold:(UIKeyCommand *)cmd {
+  [(EnrichedTextInputView *)_input katavToggleBold];
+}
+
+- (void)katavHandleItalic:(UIKeyCommand *)cmd {
+  [(EnrichedTextInputView *)_input katavToggleItalic];
+}
+
+- (void)katavHandleUnderline:(UIKeyCommand *)cmd {
+  [(EnrichedTextInputView *)_input katavToggleUnderline];
 }
 
 // Undo / redo backed by UITextView's built-in undo manager. Typed text is
