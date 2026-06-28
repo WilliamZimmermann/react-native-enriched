@@ -42,6 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addLink:(NSInteger)start end:(NSInteger)end text:(NSString *)text url:(NSString *)url;
 - (void)removeLink:(NSInteger)start end:(NSInteger)end;
 - (void)addImage:(NSString *)uri width:(float)width height:(float)height;
+- (void)setSelectedImageCaption:(NSString *)caption;
 - (void)startMention:(NSString *)indicator;
 - (void)addMention:(NSString *)indicator text:(NSString *)text payload:(NSString *)payload;
 - (void)requestHTML:(NSInteger)requestId;
@@ -546,6 +547,26 @@ NSObject *arg2 = args[2];
   float height = [(NSNumber *)arg2 floatValue];
 
   [componentView addImage:uri width:width height:height];
+  return;
+}
+
+if ([commandName isEqualToString:@"setSelectedImageCaption"]) {
+#if RCT_DEBUG
+  if ([args count] != 1) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 1);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSString * caption = (NSString *)arg0;
+
+  [componentView setSelectedImageCaption:caption];
   return;
 }
 

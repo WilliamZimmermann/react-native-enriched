@@ -73,6 +73,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void addLink(T view, int start, int end, String text, String url);
   void removeLink(T view, int start, int end);
   void addImage(T view, String uri, float width, float height);
+  void setSelectedImageCaption(T view, String caption);
   void startMention(T view, String indicator);
   void addMention(T view, String indicator, String text, String payload);
   void requestHTML(T view, int requestId);

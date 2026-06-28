@@ -116,6 +116,7 @@ export interface OnChangeStateEvent {
         isBlocking: boolean;
     };
     alignment: string;
+    selectedImageCaption: string;
 }
 export interface OnLinkDetected {
     text: string;
@@ -270,6 +271,7 @@ export interface OnContextMenuItemPressEvent {
             isBlocking: boolean;
         };
         alignment: string;
+        selectedImageCaption: string;
     };
 }
 interface TargetedEvent {
@@ -414,6 +416,7 @@ interface NativeCommands {
     addLink: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, text: string, url: string) => void;
     removeLink: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     addImage: (viewRef: React.ElementRef<ComponentType>, uri: string, width: Float, height: Float) => void;
+    setSelectedImageCaption: (viewRef: React.ElementRef<ComponentType>, caption: string) => void;
     startMention: (viewRef: React.ElementRef<ComponentType>, indicator: string) => void;
     addMention: (viewRef: React.ElementRef<ComponentType>, indicator: string, text: string, payload: string) => void;
     requestHTML: (viewRef: React.ElementRef<ComponentType>, requestId: Int32) => void;

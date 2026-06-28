@@ -331,6 +331,8 @@ export interface OnChangeStateEvent {
         isBlocking: boolean;
     };
     alignment: string;
+    /** Caption of the currently-selected image ('' when none / no image). */
+    selectedImageCaption: string;
 }
 export interface OnLinkDetected {
     text: string;
@@ -425,6 +427,9 @@ export interface EnrichedTextInputInstance extends NativeMethods {
     /** Strips any highlight in the range without touching other attributes. */
     removeHighlight: (start: number, end: number) => void;
     setImage: (src: string, width: number, height: number) => void;
+    /** Set (or clear, when empty) the caption of the currently-selected image.
+     *  Serialises to `data-caption` on the `<img>` (1:1 with the web editor). */
+    setSelectedImageCaption: (caption: string) => void;
     startMention: (indicator: string) => void;
     setMention: (indicator: string, text: string, attributes?: Record<string, string>) => void;
     setTextAlignment: (alignment: 'left' | 'center' | 'right' | 'justify' | 'auto') => void;

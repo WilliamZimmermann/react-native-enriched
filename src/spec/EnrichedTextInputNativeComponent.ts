@@ -129,6 +129,9 @@ export interface OnChangeStateEvent {
     isBlocking: boolean;
   };
   alignment: string;
+  // Caption of the currently-selected image (empty string when none / no
+  // image selected). Lets the toolbar pre-fill its caption dialog.
+  selectedImageCaption: string;
 }
 
 export interface OnLinkDetected {
@@ -297,6 +300,7 @@ export interface OnContextMenuItemPressEvent {
       isBlocking: boolean;
     };
     alignment: string;
+    selectedImageCaption: string;
   };
 }
 
@@ -492,6 +496,11 @@ interface NativeCommands {
     width: Float,
     height: Float
   ) => void;
+  // Set (or clear, when empty) the caption of the currently-selected image.
+  setSelectedImageCaption: (
+    viewRef: React.ElementRef<ComponentType>,
+    caption: string
+  ) => void;
   startMention: (
     viewRef: React.ElementRef<ComponentType>,
     indicator: string
@@ -584,6 +593,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'addLink',
     'removeLink',
     'addImage',
+    'setSelectedImageCaption',
     'startMention',
     'addMention',
     'requestHTML',

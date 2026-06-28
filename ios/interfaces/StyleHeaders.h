@@ -108,6 +108,7 @@
           withSelection:(BOOL)withSelection
          withDirtyRange:(BOOL)withDirtyRange;
 - (ImageData *)getImageDataAt:(NSUInteger)location;
+- (void)setSelectedImageCaption:(NSString *)caption;
 @end
 
 @interface TableStyle : StyleBase

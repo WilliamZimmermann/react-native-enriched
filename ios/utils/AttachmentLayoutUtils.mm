@@ -43,58 +43,71 @@
 
   if (storage.length > 0) {
     // Iterate over the entire text to find ImageAttachments
-    [storage enumerateAttribute:NSAttachmentAttributeName
-                        inRange:NSMakeRange(0, storage.length)
-                        options:0
-                     usingBlock:^(id value, NSRange range, BOOL *stop) {
-                       if ([value isKindOfClass:[ImageAttachment class]]) {
-                         ImageAttachment *attachment = (ImageAttachment *)value;
+    [storage
+        enumerateAttribute:NSAttachmentAttributeName
+                   inRange:NSMakeRange(0, storage.length)
+                   options:0
+                usingBlock:^(id value, NSRange range, BOOL *stop) {
+                  if ([value isKindOfClass:[ImageAttachment class]]) {
+                    ImageAttachment *attachment = (ImageAttachment *)value;
 
-                         CGRect rect = [self frameForAttachment:attachment
-                                                        atRange:range
-                                                       textView:textView
-                                                         config:config];
+                    CGRect rect = [self frameForAttachment:attachment
+                                                   atRange:range
+                                                  textView:textView
+                                                    config:config];
 
-                         // Get or Create the UIImageView for this specific
-                         // attachment key
-                         NSValue *key =
-                             [NSValue valueWithNonretainedObject:attachment];
-                         UIImageView *imgView = attachmentViews[key];
+                    // The attachment bounds reserve extra height below the
+                    // image for the caption; the UIImageView itself only
+                    // covers the image portion, the caption is a label
+                    // rendered below it (clipsToBounds = NO).
+                    CGFloat captionH = [attachment captionReservedHeight];
+                    CGRect imageRect = CGRectMake(rect.origin.x, rect.origin.y,
+                                                  rect.size.width,
+                                                  rect.size.height - captionH);
 
-                         if (!imgView) {
-                           // It doesn't exist yet, create it
-                           imgView = [[UIImageView alloc] initWithFrame:rect];
-                           imgView.contentMode =
-                               UIViewContentModeScaleAspectFit;
-                           imgView.tintColor = [UIColor labelColor];
+                    // Get or Create the UIImageView for this specific
+                    // attachment key
+                    NSValue *key =
+                        [NSValue valueWithNonretainedObject:attachment];
+                    UIImageView *imgView = attachmentViews[key];
 
-                           // Add it directly to the TextView
-                           [textView addSubview:imgView];
-                         }
+                    if (!imgView) {
+                      // It doesn't exist yet, create it
+                      imgView = [[UIImageView alloc] initWithFrame:imageRect];
+                      imgView.contentMode = UIViewContentModeScaleAspectFit;
+                      imgView.tintColor = [UIColor labelColor];
+                      imgView.clipsToBounds = NO;
 
-                         // Update position (in case text moved/scrolled)
-                         if (!CGRectEqualToRect(imgView.frame, rect)) {
-                           imgView.frame = rect;
-                         }
-                         UIImage *targetImage =
-                             attachment.storedAnimatedImage ?: attachment.image;
+                      // Add it directly to the TextView
+                      [textView addSubview:imgView];
+                    }
 
-                         // Only set if different to avoid resetting the
-                         // animation loop
-                         if (imgView.image != targetImage) {
-                           imgView.image = targetImage;
-                         }
+                    // Update position (in case text moved/scrolled)
+                    if (!CGRectEqualToRect(imgView.frame, imageRect)) {
+                      imgView.frame = imageRect;
+                    }
 
-                         // Ensure it is visible on top
-                         imgView.hidden = NO;
-                         [textView bringSubviewToFront:imgView];
+                    [self applyCaption:attachment.imageData.caption
+                           toImageView:imgView];
+                    UIImage *targetImage =
+                        attachment.storedAnimatedImage ?: attachment.image;
 
-                         activeAttachmentViews[key] = imgView;
-                         // Remove from the old map so we know it has been
-                         // claimed
-                         [attachmentViews removeObjectForKey:key];
-                       }
-                     }];
+                    // Only set if different to avoid resetting the
+                    // animation loop
+                    if (imgView.image != targetImage) {
+                      imgView.image = targetImage;
+                    }
+
+                    // Ensure it is visible on top
+                    imgView.hidden = NO;
+                    [textView bringSubviewToFront:imgView];
+
+                    activeAttachmentViews[key] = imgView;
+                    // Remove from the old map so we know it has been
+                    // claimed
+                    [attachmentViews removeObjectForKey:key];
+                  }
+                }];
   }
 
   // Everything remaining in attachmentViews is dead or off-screen
@@ -103,6 +116,29 @@
   }
 
   return activeAttachmentViews;
+}
+
++ (void)applyCaption:(NSString *)caption toImageView:(UIImageView *)imgView {
+  static const NSInteger kCaptionLabelTag = 0x43415054; // 'CAPT'
+  UILabel *label = (UILabel *)[imgView viewWithTag:kCaptionLabelTag];
+  if (caption == nil || caption.length == 0) {
+    [label removeFromSuperview];
+    return;
+  }
+  if (label == nil) {
+    label = [[UILabel alloc] init];
+    label.tag = kCaptionLabelTag;
+    label.font = [ImageAttachment captionFont];
+    label.textColor = [UIColor secondaryLabelColor];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.numberOfLines = 1;
+    [imgView addSubview:label];
+  }
+  label.text = caption;
+  CGFloat lineH = ceil([ImageAttachment captionFont].lineHeight);
+  // Sits just below the image (imgView covers only the image portion).
+  label.frame = CGRectMake(0, imgView.bounds.size.height + 4.0,
+                           imgView.bounds.size.width, lineH);
 }
 
 + (CGRect)frameForAttachment:(ImageAttachment *)attachment

@@ -1084,6 +1084,35 @@
         imageData.height = [heightString floatValue];
       }
 
+      NSRegularExpression *captionRegex = [NSRegularExpression
+          regularExpressionWithPattern:@"data-caption=\"([^\"]*)\""
+                               options:0
+                                 error:nil];
+      NSTextCheckingResult *captionMatch =
+          [captionRegex firstMatchInString:params
+                                   options:0
+                                     range:NSMakeRange(0, params.length)];
+      if (captionMatch) {
+        NSString *captionString =
+            [params substringWithRange:[captionMatch rangeAtIndex:1]];
+        // Reverse the serializer's attribute escaping (&amp; last).
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&quot;"
+                                                     withString:@"\""];
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&lt;"
+                                                     withString:@"<"];
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&gt;"
+                                                     withString:@">"];
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&amp;"
+                                                     withString:@"&"];
+        if (captionString.length > 0) {
+          imageData.caption = captionString;
+        }
+      }
+
       stylePair.styleValue = imageData;
     } else if ([tagName isEqualToString:@"u"]) {
       [styleArr addObject:@([UnderlineStyle getType])];
@@ -1711,9 +1740,24 @@
       if (imageStyle != nullptr) {
         ImageData *data = [imageStyle getImageDataAt:location];
         if (data != nullptr && data.uri != nullptr) {
-          return [NSString
+          NSString *tag = [NSString
               stringWithFormat:@"img src=\"%@\" width=\"%f\" height=\"%f\"",
                                data.uri, data.width, data.height];
+          // Caption round-trips as data-caption (1:1 with the web editor).
+          if (data.caption != nil && data.caption.length > 0) {
+            NSString *escaped = data.caption;
+            escaped = [escaped stringByReplacingOccurrencesOfString:@"&"
+                                                         withString:@"&amp;"];
+            escaped = [escaped stringByReplacingOccurrencesOfString:@"\""
+                                                         withString:@"&quot;"];
+            escaped = [escaped stringByReplacingOccurrencesOfString:@"<"
+                                                         withString:@"&lt;"];
+            escaped = [escaped stringByReplacingOccurrencesOfString:@">"
+                                                         withString:@"&gt;"];
+            tag =
+                [tag stringByAppendingFormat:@" data-caption=\"%@\"", escaped];
+          }
+          return tag;
         }
       }
       return @"img";

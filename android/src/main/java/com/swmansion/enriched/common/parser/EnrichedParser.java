@@ -333,8 +333,17 @@ public class EnrichedParser {
 
           out.append(" height=\"");
           out.append(((EnrichedImageSpan) style[j]).getHeight());
+          out.append("\"");
 
-          out.append("\"/>");
+          // Caption round-trips as data-caption (1:1 with the web editor).
+          String caption = ((EnrichedImageSpan) style[j]).getCaption();
+          if (caption != null && !caption.isEmpty()) {
+            out.append(" data-caption=\"");
+            out.append(escapeHtml(caption));
+            out.append("\"");
+          }
+
+          out.append("/>");
           // Don't output the placeholder character underlying the image.
           i = next;
         }
@@ -847,14 +856,15 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     String src = attributes.getValue("", "src");
     String width = attributes.getValue("", "width");
     String height = attributes.getValue("", "height");
+    String caption = attributes.getValue("", "data-caption");
 
     int len = text.length();
     text.append("￼");
-    text.setSpan(
-        spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height)),
-        len,
-        text.length(),
-        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    T imageSpan = spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height));
+    if (caption != null && !caption.isEmpty() && imageSpan instanceof EnrichedImageSpan) {
+      ((EnrichedImageSpan) imageSpan).setCaption(caption);
+    }
+    text.setSpan(imageSpan, len, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
   }
 
   private static void startA(Editable text, Attributes attributes) {

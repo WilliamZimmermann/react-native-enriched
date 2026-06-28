@@ -26,9 +26,30 @@ open class EnrichedImageSpan :
   private var width: Int = 0
   private var height: Int = 0
 
+  /** Optional caption shown below the image; round-trips as `data-caption`. */
+  var caption: String? = null
+
   constructor(drawable: Drawable, source: String, width: Int, height: Int) : super(drawable, source, ALIGN_BASELINE) {
     this.width = width
     this.height = height
+  }
+
+  private val captionPaint: Paint by lazy {
+    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      val density = Resources.getSystem().displayMetrics.density
+      textSize = 13f * density
+      color = 0xFF8A8A8A.toInt()
+    }
+  }
+
+  private fun captionDensityGap(): Float = 4f * Resources.getSystem().displayMetrics.density
+
+  /** Vertical space (px) the caption needs below the image baseline, or 0. */
+  private fun captionExtraHeight(): Int {
+    val cap = caption
+    if (cap.isNullOrBlank()) return 0
+    val fm = captionPaint.fontMetricsInt
+    return captionDensityGap().toInt() + (fm.descent - fm.ascent)
   }
 
   override fun draw(
@@ -43,10 +64,29 @@ open class EnrichedImageSpan :
     paint: Paint,
   ) {
     val drawable = drawable
+    val cap = caption
     canvas.withSave {
-      val transY = bottom - drawable.bounds.bottom - paint.fontMetricsInt.descent
-      translate(x, transY.toFloat())
+      val transY =
+        if (cap.isNullOrBlank()) {
+          // Original behavior: image bottom rests on the line bottom.
+          (bottom - drawable.bounds.bottom - paint.fontMetricsInt.descent).toFloat()
+        } else {
+          // With a caption, anchor the image bottom on the text baseline so the
+          // caption can sit in the reserved descent space below it.
+          (y - drawable.bounds.bottom).toFloat()
+        }
+      translate(x, transY)
       drawable.draw(this)
+    }
+
+    // NOTE: native caption rendering is best-effort and needs on-device tuning.
+    if (!cap.isNullOrBlank()) {
+      val cp = captionPaint
+      val captionBaseline = y + captionDensityGap() - cp.fontMetricsInt.ascent
+      val imgWidth = drawable.bounds.right.toFloat()
+      val textWidth = cp.measureText(cap)
+      val tx = x + (if (imgWidth > textWidth) (imgWidth - textWidth) / 2f else 0f)
+      canvas.drawText(cap, tx, captionBaseline, cp)
     }
   }
 
@@ -115,6 +155,13 @@ open class EnrichedImageSpan :
       if (targetTop < fm.ascent) {
         fm.ascent = targetTop
         fm.top = targetTop
+      }
+
+      // Reserve space BELOW the baseline for the caption (rendered in draw()).
+      val extra = captionExtraHeight()
+      if (extra > 0) {
+        if (fm.descent < extra) fm.descent = extra
+        if (fm.bottom < extra) fm.bottom = extra
       }
     }
 

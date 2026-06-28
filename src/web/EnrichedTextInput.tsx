@@ -410,6 +410,10 @@ export const EnrichedTextInput = ({
       ) => setMention(editor, indicator, text, attributes),
       setImage: (src: string, width: number, height: number) =>
         runFocused(editor, (c) => c.setImage({ src, width, height })),
+      setSelectedImageCaption: (caption: string) =>
+        runFocused(editor, (c) =>
+          c.updateAttributes('image', { caption: caption || null })
+        ),
       measure: () => {},
       measureInWindow: () => {},
       measureLayout: () => {},

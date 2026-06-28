@@ -147,4 +147,37 @@ static NSString *const ImageAttributeName = @"EnrichedImage";
          withDirtyRange:YES];
 }
 
+- (void)setSelectedImageCaption:(NSString *)caption {
+  NSUInteger location = self.host.textView.selectedRange.location;
+  ImageData *data = [self getImageDataAt:location];
+  if (data == nullptr) {
+    return;
+  }
+  data.caption = (caption.length > 0) ? caption : nil;
+
+  // Find the image's 1-char range and rebuild its attachment so layout reserves
+  // caption space and the overlay re-renders.
+  NSRange imageRange = NSMakeRange(0, 0);
+  NSRange inputRange = NSMakeRange(0, self.host.textView.textStorage.length);
+  [self.host.textView.textStorage attribute:ImageAttributeName
+                                    atIndex:location
+                      longestEffectiveRange:&imageRange
+                                    inRange:inputRange];
+  if (imageRange.length == 0) {
+    return;
+  }
+
+  ImageAttachment *attachment =
+      [[ImageAttachment alloc] initWithImageData:data];
+  attachment.delegate = (id)self.host;
+  [self.host.textView.textStorage beginEditing];
+  [self.host.textView.textStorage addAttributes:@{
+    NSAttachmentAttributeName : attachment,
+    ImageAttributeName : data
+  }
+                                          range:imageRange];
+  [self.host.textView.textStorage endEditing];
+  [self.host.attributesManager addDirtyRange:imageRange];
+}
+
 @end

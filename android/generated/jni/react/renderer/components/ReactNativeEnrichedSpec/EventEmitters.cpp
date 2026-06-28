@@ -193,6 +193,7 @@ void EnrichedTextInputViewEventEmitter::onChangeState(OnChangeState event) const
   payload.setProperty(runtime, "highlight", highlight);
 }
 payload.setProperty(runtime, "alignment", event.alignment);
+payload.setProperty(runtime, "selectedImageCaption", event.selectedImageCaption);
     return payload;
   });
 }
@@ -436,6 +437,7 @@ payload.setProperty(runtime, "selectionEnd", event.selectionEnd);
     styleState.setProperty(runtime, "highlight", highlight);
   }
   styleState.setProperty(runtime, "alignment", event.styleState.alignment);
+  styleState.setProperty(runtime, "selectedImageCaption", event.styleState.selectedImageCaption);
   payload.setProperty(runtime, "styleState", styleState);
 }
     return payload;

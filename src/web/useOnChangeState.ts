@@ -99,6 +99,8 @@ function buildState(
       isBlocking: isFormatBlocked('image', editor, htmlStyle),
     },
     alignment: 'left',
+    selectedImageCaption:
+      (editor.getAttributes('image').caption as string | null) ?? '',
   };
 }
 

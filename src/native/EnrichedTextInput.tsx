@@ -295,6 +295,9 @@ export const EnrichedTextInput = ({
     setImage: (uri: string, width: number, height: number) => {
       Commands.addImage(nullthrows(nativeRef.current), uri, width, height);
     },
+    setSelectedImageCaption: (caption: string) => {
+      Commands.setSelectedImageCaption(nullthrows(nativeRef.current), caption);
+    },
     setMention: (
       indicator: string,
       text: string,

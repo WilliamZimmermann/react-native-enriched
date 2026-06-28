@@ -34,6 +34,7 @@ export const DEFAULT_STYLES: StylesState = {
   checkboxList: DEFAULT_STYLE_STATE,
   highlight: DEFAULT_STYLE_STATE,
   alignment: 'auto',
+  selectedImageCaption: '',
 };
 
 export const DEFAULT_LINK_STATE = {

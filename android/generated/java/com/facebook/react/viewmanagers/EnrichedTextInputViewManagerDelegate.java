@@ -204,6 +204,9 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "addImage":
         mViewManager.addImage(view, args.getString(0), (float) args.getDouble(1), (float) args.getDouble(2));
         break;
+      case "setSelectedImageCaption":
+        mViewManager.setSelectedImageCaption(view, args.getString(0));
+        break;
       case "startMention":
         mViewManager.startMention(view, args.getString(0));
         break;

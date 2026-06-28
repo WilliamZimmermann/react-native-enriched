@@ -1,5 +1,6 @@
 package com.swmansion.enriched.textinput.utils
 
+import android.text.Spannable
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.WritableMap
@@ -7,6 +8,7 @@ import com.facebook.react.uimanager.UIManagerHelper
 import com.facebook.react.uimanager.events.EventDispatcher
 import com.swmansion.enriched.textinput.EnrichedTextInputView
 import com.swmansion.enriched.textinput.events.OnChangeStateEvent
+import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedSpans
 
 class EnrichedSpanState(
@@ -254,8 +256,21 @@ class EnrichedSpanState(
     payload.putMap("mention", getStyleState(activeStyles, EnrichedSpans.MENTION))
     payload.putMap("checkboxList", getStyleState(activeStyles, EnrichedSpans.CHECKBOX_LIST))
     payload.putString("alignment", currentAlignment)
+    payload.putString("selectedImageCaption", getSelectedImageCaption())
 
     return payload
+  }
+
+  /** Caption of the currently-selected image, or '' when no image is selected. */
+  private fun getSelectedImageCaption(): String {
+    val start = imageStart ?: return ""
+    val spannable = view.text as? Spannable ?: return ""
+    if (start < 0 || start + 1 > spannable.length) return ""
+    val span =
+      spannable
+        .getSpans(start, start + 1, EnrichedInputImageSpan::class.java)
+        .firstOrNull() ?: return ""
+    return span.caption ?: ""
   }
 
   private fun emitStateChangeEvent() {

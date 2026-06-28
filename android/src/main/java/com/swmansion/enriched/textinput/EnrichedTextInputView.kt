@@ -977,6 +977,22 @@ class EnrichedTextInputView :
     layoutManager.invalidateLayout()
   }
 
+  /** Sets (or clears, when blank) the caption of the currently-selected image,
+   *  then refreshes layout and re-emits the HTML so it autosaves. */
+  fun setSelectedImageCaption(caption: String) {
+    val spannable = text as? Spannable ?: return
+    val start = spanState?.getStart(EnrichedSpans.IMAGE) ?: return
+    val span =
+      spannable
+        .getSpans(start, start + 1, EnrichedInputImageSpan::class.java)
+        .firstOrNull() ?: return
+    span.caption = caption.ifBlank { null }
+    layoutManager.invalidateLayout()
+    // A span-attribute mutation doesn't trip the text/span watchers, so emit the
+    // HTML change explicitly (drives autosave + the data-caption round-trip).
+    spanWatcher?.emitEvent(spannable, span)
+  }
+
   fun startMention(indicator: String) {
     val isValid = verifyStyle(EnrichedSpans.MENTION)
     if (!isValid) return

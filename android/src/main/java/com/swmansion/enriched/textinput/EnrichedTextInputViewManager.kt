@@ -455,6 +455,13 @@ class EnrichedTextInputViewManager :
     view?.addImage(src, width, height)
   }
 
+  override fun setSelectedImageCaption(
+    view: EnrichedTextInputView?,
+    caption: String,
+  ) {
+    view?.setSelectedImageCaption(caption)
+  }
+
   override fun startMention(
     view: EnrichedTextInputView?,
     indicator: String,

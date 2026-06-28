@@ -66,6 +66,21 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
   return self;
 }
 
++ (UIFont *)captionFont {
+  return [UIFont systemFontOfSize:13];
+}
+
+// Caption is rendered below the image (best-effort; needs on-device tuning).
+static const CGFloat kCaptionGap = 4.0;
+
+- (CGFloat)captionReservedHeight {
+  NSString *caption = self.imageData.caption;
+  if (caption == nil || caption.length == 0) {
+    return 0;
+  }
+  return kCaptionGap + ceil([ImageAttachment captionFont].lineHeight);
+}
+
 - (CGRect)attachmentBoundsForTextContainer:(NSTextContainer *)textContainer
                       proposedLineFragment:(CGRect)lineFrag
                              glyphPosition:(CGPoint)position
@@ -108,8 +123,12 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
   // the line height to jump.  By reserving descender space upfront the line
   // height stays consistent regardless of whether text is present.
   CGFloat descender = font.descender;
-  return CGRectMake(baseBounds.origin.x, descender, baseBounds.size.width,
-                    baseBounds.size.height - descender);
+  // Reserve extra space below the image for the caption (drawn by the overlay
+  // layout as a label below the UIImageView).
+  CGFloat caption = [self captionReservedHeight];
+  return CGRectMake(baseBounds.origin.x, descender - caption,
+                    baseBounds.size.width,
+                    baseBounds.size.height - descender + caption);
 }
 
 - (void)loadAsync {

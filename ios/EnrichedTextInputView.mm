@@ -1159,6 +1159,15 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
       _blockedStyles = newBlockedStyles;
       _recentlyEmittedAlignment = currentAlignment;
 
+      ImageStyle *imageStyleForCaption =
+          (ImageStyle *)stylesDict[@([ImageStyle getType])];
+      ImageData *selectedImageData =
+          [imageStyleForCaption getImageDataAt:textView.selectedRange.location];
+      NSString *selectedImageCaption =
+          (selectedImageData != nullptr && selectedImageData.caption != nil)
+              ? selectedImageData.caption
+              : @"";
+
       emitter->onChangeState(
           {.bold = GET_STYLE_STATE([BoldStyle getType]),
            .italic = GET_STYLE_STATE([ItalicStyle getType]),
@@ -1180,7 +1189,8 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
            .image = GET_STYLE_STATE([ImageStyle getType]),
            .checkboxList = GET_STYLE_STATE([CheckboxListStyle getType]),
            .highlight = GET_STYLE_STATE([HighlightStyle getType]),
-           .alignment = [currentAlignment UTF8String]});
+           .alignment = [currentAlignment UTF8String],
+           .selectedImageCaption = [selectedImageCaption UTF8String]});
     }
   }
 
@@ -1341,6 +1351,9 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     CGFloat imgHeight = [(NSNumber *)args[2] floatValue];
 
     [self addImage:uri width:imgWidth height:imgHeight];
+  } else if ([commandName isEqualToString:@"setSelectedImageCaption"]) {
+    NSString *caption = (NSString *)args[0];
+    [self setSelectedImageCaption:caption];
   } else if ([commandName isEqualToString:@"setSelection"]) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
@@ -1929,6 +1942,16 @@ static UIColor *katavParseHexColor(NSString *hex) {
     [imageStyleClass addImage:uri width:width height:height];
     [self anyTextMayHaveBeenModified];
   }
+}
+
+- (void)setSelectedImageCaption:(NSString *)caption {
+  ImageStyle *imageStyleClass =
+      (ImageStyle *)stylesDict[@([ImageStyle getType])];
+  if (imageStyleClass == nullptr) {
+    return;
+  }
+  [imageStyleClass setSelectedImageCaption:caption];
+  [self anyTextMayHaveBeenModified];
 }
 
 - (void)startMentionWithIndicator:(NSString *)indicator {
