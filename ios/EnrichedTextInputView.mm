@@ -2473,6 +2473,20 @@ static UIColor *katavParseHexColor(NSString *hex) {
 - (void)textViewDidChangeSelection:(UITextView *)textView {
   [self updateSelectionTintForHighlightOverlap];
 
+  [self emitChangeSelectionEvent];
+
+  // manage selection changes
+  [self manageSelectionBasedChanges];
+}
+
+// Computes the current selection's substring + on-screen rect and emits
+// onChangeSelection. Extracted from textViewDidChangeSelection: so it can also
+// fire on scroll (see scrollViewDidScroll:) — JS-side overlays (image resize
+// handles, table controls, the selection popover) anchor to this rect in the
+// React wrapper's coordinate space, so they have to be refreshed as the text
+// view scrolls internally, or they stay pinned at the original spot and end up
+// floating over unrelated text.
+- (void)emitChangeSelectionEvent {
   // emit the event
   NSString *textAtSelection =
       [[[NSMutableString alloc] initWithString:textView.textStorage.string]
@@ -2520,9 +2534,19 @@ static UIColor *katavParseHexColor(NSString *hex) {
          .rectWidth = static_cast<Float>(selectionRect.size.width),
          .rectHeight = static_cast<Float>(selectionRect.size.height)});
   }
+}
 
-  // manage selection changes
-  [self manageSelectionBasedChanges];
+// UITextView is a UIScrollView and scrolls its content internally, but the
+// selection rect we report is anchored to the React wrapper — so a selected
+// image's resize handles (and the table/selection overlays) would stay frozen
+// in place while the image scrolls away, leaving the green chrome floating over
+// the text area. Re-emit the selection rect as the content scrolls so the
+// overlay tracks the selection. Only when something is actually selected, so
+// ordinary reading-scroll stays free of bridge traffic and re-renders.
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  if (textView.selectedRange.length > 0) {
+    [self emitChangeSelectionEvent];
+  }
 }
 
 // Builds a UITextRange from an NSRange so we can ask the text view for the
