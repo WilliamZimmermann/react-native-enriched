@@ -124,3 +124,15 @@
 - (void)removeHighlightInRange:(NSRange)range;
 - (UIColor *)getHighlightColorAt:(NSUInteger)location;
 @end
+
+@interface HorizontalRuleStyle : StyleBase
+// Inserts a horizontal rule (`<hr>`) as a single object-replacement character
+// carrying a HorizontalRuleAttachment that draws a full-width divider line.
+// The rule is forced onto its own line (newlines added around it as needed).
+- (void)insertHorizontalRule;
+- (void)addHorizontalRuleAtRange:(NSRange)range
+                   withSelection:(BOOL)withSelection
+                  withDirtyRange:(BOOL)withDirtyRange;
+// YES when the location carries the horizontal-rule attribute.
+- (BOOL)isHorizontalRuleAt:(NSUInteger)location;
+@end

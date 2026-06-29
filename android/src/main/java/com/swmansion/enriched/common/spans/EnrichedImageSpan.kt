@@ -10,7 +10,9 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.text.Layout
 import android.text.Spannable
+import android.text.StaticLayout
 import android.text.style.ImageSpan
 import android.util.Log
 import androidx.core.graphics.drawable.toDrawable
@@ -44,12 +46,28 @@ open class EnrichedImageSpan :
 
   private fun captionDensityGap(): Float = 4f * Resources.getSystem().displayMetrics.density
 
+  /** Lays the caption out, wrapping across as many lines as it needs at the
+   *  image width. Null for a blank caption or non-positive width. */
+  private fun buildCaptionLayout(width: Int): StaticLayout? {
+    val cap = caption
+    if (cap.isNullOrBlank() || width <= 0) return null
+    return StaticLayout.Builder
+      .obtain(cap, 0, cap.length, captionPaint, width)
+      .setAlignment(Layout.Alignment.ALIGN_CENTER)
+      .setIncludePad(false)
+      .build()
+  }
+
   /** Vertical space (px) the caption needs below the image baseline, or 0. */
   private fun captionExtraHeight(): Int {
     val cap = caption
     if (cap.isNullOrBlank()) return 0
-    val fm = captionPaint.fontMetricsInt
-    return captionDensityGap().toInt() + (fm.descent - fm.ascent)
+    val layout = buildCaptionLayout(drawable.bounds.right)
+    val textHeight =
+      layout?.height
+        // Pre-layout (image width unknown yet): reserve a single line.
+        ?: (captionPaint.fontMetricsInt.let { it.descent - it.ascent })
+    return captionDensityGap().toInt() + textHeight
   }
 
   override fun draw(
@@ -81,12 +99,17 @@ open class EnrichedImageSpan :
 
     // NOTE: native caption rendering is best-effort and needs on-device tuning.
     if (!cap.isNullOrBlank()) {
-      val cp = captionPaint
-      val captionBaseline = y + captionDensityGap() - cp.fontMetricsInt.ascent
-      val imgWidth = drawable.bounds.right.toFloat()
-      val textWidth = cp.measureText(cap)
-      val tx = x + (if (imgWidth > textWidth) (imgWidth - textWidth) / 2f else 0f)
-      canvas.drawText(cap, tx, captionBaseline, cp)
+      // Word-wrap the caption across the image width so long text shows every
+      // line instead of being clipped/measured to one (the StaticLayout's height
+      // matches captionExtraHeight, so reserved space == drawn space).
+      val layout = buildCaptionLayout(drawable.bounds.right)
+      if (layout != null) {
+        canvas.withSave {
+          // `y` is the image baseline; the caption block starts a gap below it.
+          translate(x, y + captionDensityGap())
+          layout.draw(this)
+        }
+      }
     }
   }
 

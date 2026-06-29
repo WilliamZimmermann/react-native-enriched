@@ -131,14 +131,21 @@
     label.font = [ImageAttachment captionFont];
     label.textColor = [UIColor secondaryLabelColor];
     label.textAlignment = NSTextAlignmentCenter;
-    label.numberOfLines = 1;
+    // 0 = wrap across as many lines as the caption needs.
+    label.numberOfLines = 0;
+    label.lineBreakMode = NSLineBreakByWordWrapping;
     [imgView addSubview:label];
   }
   label.text = caption;
-  CGFloat lineH = ceil([ImageAttachment captionFont].lineHeight);
-  // Sits just below the image (imgView covers only the image portion).
-  label.frame = CGRectMake(0, imgView.bounds.size.height + 4.0,
-                           imgView.bounds.size.width, lineH);
+  CGFloat width = imgView.bounds.size.width;
+  CGFloat textH = [ImageAttachment captionHeightForCaption:caption width:width];
+  if (textH <= 0) {
+    textH = ceil([ImageAttachment captionFont].lineHeight);
+  }
+  // Sits just below the image (imgView covers only the image portion). Height
+  // is the wrapped text height so long captions show every line (must match
+  // ImageAttachment.captionReservedHeight so reserved space == drawn space).
+  label.frame = CGRectMake(0, imgView.bounds.size.height + 4.0, width, textH);
 }
 
 + (CGRect)frameForAttachment:(ImageAttachment *)attachment

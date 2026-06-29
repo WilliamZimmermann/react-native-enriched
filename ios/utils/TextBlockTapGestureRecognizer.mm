@@ -1,10 +1,12 @@
 #import "TextBlockTapGestureRecognizer.h"
 #import "CheckboxHitTestUtils.h"
 #import "EnrichedTextInputView.h"
+#import "TableCellHitTestUtils.h"
 
 @implementation TextBlockTapGestureRecognizer {
   TextBlockTapKind _tapKind;
   NSInteger _characterIndex;
+  TableCellHitResult *_tableHit;
 }
 
 - (instancetype)initWithInput:(id)input action:(SEL)action {
@@ -30,9 +32,14 @@
   return _characterIndex;
 }
 
+- (TableCellHitResult *)tableHit {
+  return _tableHit;
+}
+
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
   _tapKind = TextBlockTapKindNone;
   _characterIndex = NSNotFound;
+  _tableHit = nil;
 
   if (!self.input) {
     self.state = UIGestureRecognizerStateFailed;
@@ -50,6 +57,17 @@
     [super touchesBegan:touches withEvent:event];
     return;
   }
+
+  TableCellHitResult *tableHit =
+      [TableCellHitTestUtils hitTestTableCellAtPoint:point inInput:self.input];
+  if (tableHit != nil) {
+    _tapKind = TextBlockTapKindTable;
+    _characterIndex = tableHit.charIndex;
+    _tableHit = tableHit;
+    [super touchesBegan:touches withEvent:event];
+    return;
+  }
+
   self.state = UIGestureRecognizerStateFailed;
 }
 

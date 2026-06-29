@@ -147,6 +147,17 @@ export interface OnChangeSelectionEvent {
     rectWidth: Float;
     rectHeight: Float;
 }
+export interface OnTableCellTapEvent {
+    charIndex: Int32;
+    tableIndex: Int32;
+    row: Int32;
+    col: Int32;
+    x: Float;
+    y: Float;
+    width: Float;
+    height: Float;
+    colFractions: string;
+}
 export interface OnRequestHtmlResultEvent {
     requestId: Int32;
     html: UnsafeMixed;
@@ -370,6 +381,7 @@ export interface NativeProps extends ViewProps {
     onMentionDetected?: DirectEventHandler<OnMentionDetectedInternal>;
     onMention?: DirectEventHandler<OnMentionEvent>;
     onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
+    onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
     onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
     onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
     onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;
@@ -395,6 +407,7 @@ interface NativeCommands {
     setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     setSelection: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    focusTableCell: (viewRef: React.ElementRef<ComponentType>, tableIndex: Int32, row: Int32, col: Int32) => void;
     toggleBold: (viewRef: React.ElementRef<ComponentType>) => void;
     toggleItalic: (viewRef: React.ElementRef<ComponentType>) => void;
     toggleUnderline: (viewRef: React.ElementRef<ComponentType>) => void;
@@ -417,6 +430,7 @@ interface NativeCommands {
     removeLink: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     addImage: (viewRef: React.ElementRef<ComponentType>, uri: string, width: Float, height: Float) => void;
     setSelectedImageCaption: (viewRef: React.ElementRef<ComponentType>, caption: string) => void;
+    insertHorizontalRule: (viewRef: React.ElementRef<ComponentType>) => void;
     startMention: (viewRef: React.ElementRef<ComponentType>, indicator: string) => void;
     addMention: (viewRef: React.ElementRef<ComponentType>, indicator: string, text: string, payload: string) => void;
     requestHTML: (viewRef: React.ElementRef<ComponentType>, requestId: Int32) => void;

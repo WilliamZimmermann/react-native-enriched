@@ -6,6 +6,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import com.swmansion.enriched.common.EnrichedConstants
 import com.swmansion.enriched.textinput.EnrichedTextInputView
+import com.swmansion.enriched.textinput.spans.EnrichedInputHorizontalRuleSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputLinkSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputMentionSpan
@@ -335,6 +336,37 @@ class ParametrizedStyles(
     span.observeAsyncDrawableLoaded(view.text)
 
     spannable.setSpan(span, imageStart, imageEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+  }
+
+  fun insertHorizontalRule() {
+    val selection = view.selection ?: return
+    val spannable = view.text as SpannableStringBuilder
+    val (start, end) = selection.getInlineSelection()
+
+    // Build the rule isolated on its own line: a leading newline unless the
+    // caret already starts a line, the object-replacement char, then a trailing
+    // newline so the user lands on a fresh line below.
+    val builder = StringBuilder()
+    val needLeading = start > 0 && spannable[start - 1] != '\n'
+    if (needLeading) builder.append('\n')
+    val orcOffset = builder.length
+    builder.append(EnrichedConstants.ORC_STRING)
+    val afterOrc = builder.length
+    val needTrailing = end >= spannable.length || spannable[end] != '\n'
+    if (needTrailing) builder.append('\n')
+
+    spannable.replace(start, end, builder.toString())
+
+    val (ruleStart, ruleEnd) =
+      spannable.getSafeSpanBoundaries(start + orcOffset, start + afterOrc)
+    spannable.setSpan(
+      EnrichedInputHorizontalRuleSpan(),
+      ruleStart,
+      ruleEnd,
+      Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+    )
+
+    view.setSelection((start + builder.length).coerceAtMost(spannable.length))
   }
 
   fun startMention(indicator: String) {

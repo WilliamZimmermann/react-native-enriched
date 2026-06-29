@@ -13,6 +13,7 @@
 #import "StringExtension.h"
 #import "StyleHeaders.h"
 #import "StyleUtils.h"
+#import "TableCellHitTestUtils.h"
 #import "TextBlockTapGestureRecognizer.h"
 #import "TextInsertionUtils.h"
 #import "UIView+React.h"
@@ -34,6 +35,19 @@
   }
 
 using namespace facebook::react;
+
+// Joins column-width fractions into the "0.3,0.4,0.3" wire form for the
+// onTableCellTap event (empty string when there are none).
+static std::string katavFractionsString(NSArray<NSNumber *> *fractions) {
+  if (fractions.count == 0) {
+    return std::string();
+  }
+  NSMutableArray<NSString *> *parts = [NSMutableArray array];
+  for (NSNumber *f in fractions) {
+    [parts addObject:[NSString stringWithFormat:@"%.4f", f.doubleValue]];
+  }
+  return std::string([[parts componentsJoinedByString:@","] UTF8String]);
+}
 
 @interface EnrichedTextInputView () <
     RCTEnrichedTextInputViewViewProtocol, UITextViewDelegate,
@@ -1354,10 +1368,17 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"setSelectedImageCaption"]) {
     NSString *caption = (NSString *)args[0];
     [self setSelectedImageCaption:caption];
+  } else if ([commandName isEqualToString:@"insertHorizontalRule"]) {
+    [self insertHorizontalRule];
   } else if ([commandName isEqualToString:@"setSelection"]) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
     [self setCustomSelection:start end:end];
+  } else if ([commandName isEqualToString:@"focusTableCell"]) {
+    NSInteger tableIndex = [((NSNumber *)args[0]) integerValue];
+    NSInteger row = [((NSNumber *)args[1]) integerValue];
+    NSInteger col = [((NSNumber *)args[2]) integerValue];
+    [self focusTableCellAtIndex:tableIndex row:row col:col];
   } else if ([commandName isEqualToString:@"requestHTML"]) {
     NSInteger requestId = [((NSNumber *)args[0]) integerValue];
     [self requestHTML:requestId];
@@ -1954,6 +1975,21 @@ static UIColor *katavParseHexColor(NSString *hex) {
   [self anyTextMayHaveBeenModified];
 }
 
+- (void)insertHorizontalRule {
+  HorizontalRuleStyle *hrStyle =
+      (HorizontalRuleStyle *)stylesDict[@([HorizontalRuleStyle getType])];
+  if (hrStyle == nullptr) {
+    return;
+  }
+
+  if ([StyleUtils handleStyleBlocksAndConflicts:[HorizontalRuleStyle getType]
+                                          range:textView.selectedRange
+                                        forHost:self]) {
+    [hrStyle insertHorizontalRule];
+    [self anyTextMayHaveBeenModified];
+  }
+}
+
 - (void)startMentionWithIndicator:(NSString *)indicator {
   MentionStyle *mentionStyleClass =
       (MentionStyle *)stylesDict[@([MentionStyle getType])];
@@ -2377,6 +2413,32 @@ static UIColor *katavParseHexColor(NSString *hex) {
     _baseSelectionTintColor = textView.tintColor;
   }
   NSRange sel = textView.selectedRange;
+
+  // A selected inline image shows the JS resize overlay instead of the native
+  // selection. The native selection band is sized to the attachment's RESERVED
+  // glyph box (image height + descender + caption space), so it renders a
+  // second, taller box around the image — worse with a multi-line caption.
+  // Clear the tint while a lone image is selected to hide that band (and its
+  // grab handles); the resize overlay is the only selection affordance.
+  if (sel.length == 1 && sel.location < textView.textStorage.length) {
+    ImageStyle *imageStyle = (ImageStyle *)stylesDict[@([ImageStyle getType])];
+    TableStyle *tableStyle = (TableStyle *)stylesDict[@([TableStyle getType])];
+    BOOL loneImage = imageStyle != nil &&
+                     [imageStyle getImageDataAt:sel.location] != nullptr;
+    // A tapped table selects its ORC (1 char) so the toolbar's table controls
+    // light up; like an image, the native selection band around that glyph is
+    // unwanted chrome — clear the tint so only the table grid shows.
+    BOOL loneTable = tableStyle != nil &&
+                     [tableStyle getTableDataAt:sel.location] != nullptr;
+    if (loneImage || loneTable) {
+      UIColor *clear = [UIColor clearColor];
+      if (![textView.tintColor isEqual:clear]) {
+        textView.tintColor = clear;
+      }
+      return;
+    }
+  }
+
   UIColor *desired = _baseSelectionTintColor;
   if (sel.length > 0 &&
       sel.location + sel.length <= textView.textStorage.length) {
@@ -2573,8 +2635,78 @@ static UIColor *katavParseHexColor(NSString *hex) {
     break;
   }
 
+  case TextBlockTapKindTable: {
+    TableCellHitResult *hit = gr.tableHit;
+    if (hit == nil) {
+      break;
+    }
+    // Select the table's Object Replacement Character so the table reads as
+    // "active": JS keys the toolbar's table controls off this 1-char selection
+    // and clears them when the next selection change doesn't match.
+    NSUInteger loc = (NSUInteger)hit.charIndex;
+    if (loc < textView.textStorage.length) {
+      textView.selectedRange = NSMakeRange(loc, 1);
+    }
+    // Cell frame: text-view space → outer view (self) space, matching how
+    // onChangeSelection reports its rect, so the JS inline cell editor lands
+    // over the tapped cell after any scroll.
+    CGRect rectInSelf = [textView convertRect:hit.cellRect toView:self];
+    auto emitter = [self getEventEmitter];
+    if (emitter != nullptr) {
+      emitter->onTableCellTap(
+          {.charIndex = static_cast<int>(hit.charIndex),
+           .tableIndex = static_cast<int>(hit.tableIndex),
+           .row = static_cast<int>(hit.row),
+           .col = static_cast<int>(hit.col),
+           .x = static_cast<Float>(rectInSelf.origin.x),
+           .y = static_cast<Float>(rectInSelf.origin.y),
+           .width = static_cast<Float>(rectInSelf.size.width),
+           .height = static_cast<Float>(rectInSelf.size.height),
+           .colFractions = katavFractionsString(hit.columnFractions)});
+    }
+    break;
+  }
+
   default:
     break;
+  }
+}
+
+// Programmatically focus a table cell (no tap) and report it the same way
+// onTextBlockTap does — used by the JS Tab-to-next-cell navigation. Reads the
+// live cell geometry so it's correct after re-renders.
+- (void)focusTableCellAtIndex:(NSInteger)tableIndex
+                          row:(NSInteger)row
+                          col:(NSInteger)col {
+  TableCellHitResult *hit = [TableCellHitTestUtils cellAtTableIndex:tableIndex
+                                                                row:row
+                                                                col:col
+                                                            inInput:self];
+  if (hit == nil) {
+    return;
+  }
+  // NOTE: deliberately does NOT call becomeFirstResponder. This is driven by
+  // Tab from the JS inline cell editor (a separate RN TextInput overlay that
+  // holds the keyboard); grabbing first responder for the native editor here
+  // steals focus mid-handoff and drops the keyboard on the next cell. Setting
+  // selectedRange doesn't require first responder.
+  NSUInteger loc = (NSUInteger)hit.charIndex;
+  if (loc < textView.textStorage.length) {
+    textView.selectedRange = NSMakeRange(loc, 1);
+  }
+  CGRect rectInSelf = [textView convertRect:hit.cellRect toView:self];
+  auto emitter = [self getEventEmitter];
+  if (emitter != nullptr) {
+    emitter->onTableCellTap(
+        {.charIndex = static_cast<int>(hit.charIndex),
+         .tableIndex = static_cast<int>(tableIndex),
+         .row = static_cast<int>(row),
+         .col = static_cast<int>(col),
+         .x = static_cast<Float>(rectInSelf.origin.x),
+         .y = static_cast<Float>(rectInSelf.origin.y),
+         .width = static_cast<Float>(rectInSelf.size.width),
+         .height = static_cast<Float>(rectInSelf.size.height),
+         .colFractions = katavFractionsString(hit.columnFractions)});
   }
 }
 

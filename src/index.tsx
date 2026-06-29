@@ -8,6 +8,7 @@ export type {
   OnLinkDetected,
   OnMentionDetected,
   OnChangeSelectionEvent,
+  OnTableCellTapEvent,
   OnKeyPressEvent,
   OnPasteImagesEvent,
   OnSubmitEditing,

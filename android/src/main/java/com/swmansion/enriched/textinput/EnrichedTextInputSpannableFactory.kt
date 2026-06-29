@@ -13,6 +13,7 @@ import com.swmansion.enriched.textinput.spans.EnrichedInputH3Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH4Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH5Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH6Span
+import com.swmansion.enriched.textinput.spans.EnrichedInputHorizontalRuleSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputInlineCodeSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputItalicSpan
@@ -54,6 +55,8 @@ class EnrichedTextInputSpannableFactory : EnrichedSpanFactory<HtmlStyle> {
     width: Int,
     height: Int,
   ): EnrichedImageSpan = EnrichedInputImageSpan.createEnrichedImageSpan(source, width, height)
+
+  override fun createHorizontalRuleSpan() = EnrichedInputHorizontalRuleSpan()
 
   override fun createH1Span(style: HtmlStyle) = EnrichedInputH1Span(style)
 

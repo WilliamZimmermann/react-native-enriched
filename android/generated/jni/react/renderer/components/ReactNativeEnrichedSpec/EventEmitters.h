@@ -206,6 +206,18 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
     Float rectHeight;
     };
 
+  struct OnTableCellTap {
+      int charIndex;
+    int tableIndex;
+    int row;
+    int col;
+    Float x;
+    Float y;
+    Float width;
+    Float height;
+    std::string colFractions;
+    };
+
   struct OnRequestHtmlResult {
       int requestId;
     folly::dynamic html;
@@ -399,6 +411,8 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
   void onMention(OnMention value) const;
 
   void onChangeSelection(OnChangeSelection value) const;
+
+  void onTableCellTap(OnTableCellTap value) const;
 
   void onRequestHtmlResult(OnRequestHtmlResult value) const;
 

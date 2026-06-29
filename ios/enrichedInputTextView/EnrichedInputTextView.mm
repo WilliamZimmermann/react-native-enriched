@@ -480,6 +480,13 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
 }
 
 - (void)katavHandleTab:(UIKeyCommand *)cmd {
+  // Inside a list, Tab indents (the editor's own behaviour). Outside a list it
+  // would otherwise be a silent no-op — instead surface it to JS as a Tab key
+  // press so consumers (e.g. the table cell editor) can act on it (next cell).
+  if ([self activeListStyleForSelection] == nil) {
+    [(EnrichedTextInputView *)_input emitOnKeyPressEvent:@"Tab"];
+    return;
+  }
   [self katavApplyListIndentDelta:+1];
 }
 

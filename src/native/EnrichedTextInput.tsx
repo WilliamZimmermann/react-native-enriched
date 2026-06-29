@@ -71,6 +71,7 @@ export const EnrichedTextInput = ({
   onChangeMention,
   onEndMention,
   onChangeSelection,
+  onTableCellTap,
   onKeyPress,
   onSubmitEditing,
   returnKeyType,
@@ -298,6 +299,9 @@ export const EnrichedTextInput = ({
     setSelectedImageCaption: (caption: string) => {
       Commands.setSelectedImageCaption(nullthrows(nativeRef.current), caption);
     },
+    insertHorizontalRule: () => {
+      Commands.insertHorizontalRule(nullthrows(nativeRef.current));
+    },
     setMention: (
       indicator: string,
       text: string,
@@ -322,6 +326,14 @@ export const EnrichedTextInput = ({
     },
     setSelection: (start: number, end: number) => {
       Commands.setSelection(nullthrows(nativeRef.current), start, end);
+    },
+    focusTableCell: (tableIndex: number, row: number, col: number) => {
+      Commands.focusTableCell(
+        nullthrows(nativeRef.current),
+        tableIndex,
+        row,
+        col
+      );
     },
     setTextAlignment: (
       alignment: 'left' | 'center' | 'right' | 'justify' | 'auto'
@@ -404,6 +416,7 @@ export const EnrichedTextInput = ({
       onMentionDetected={handleMentionDetected}
       onMention={handleMentionEvent}
       onChangeSelection={onChangeSelection}
+      onTableCellTap={onTableCellTap}
       onRequestHtmlResult={handleRequestHtmlResult}
       onInputKeyPress={onKeyPress}
       contextMenuItems={nativeContextMenuItems}

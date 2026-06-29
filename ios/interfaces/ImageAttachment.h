@@ -10,6 +10,9 @@
 
 /** Font used to render the caption below the image. */
 + (UIFont *)captionFont;
+/** Height (pts) the caption needs at `width`, wrapping across as many lines as
+ *  the text requires. 0 for an empty caption or non-positive width. */
++ (CGFloat)captionHeightForCaption:(NSString *)caption width:(CGFloat)width;
 /** Vertical space (pts) reserved below the image for the caption, or 0. */
 - (CGFloat)captionReservedHeight;
 

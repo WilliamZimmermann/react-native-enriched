@@ -73,12 +73,37 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
 // Caption is rendered below the image (best-effort; needs on-device tuning).
 static const CGFloat kCaptionGap = 4.0;
 
++ (CGFloat)captionHeightForCaption:(NSString *)caption width:(CGFloat)width {
+  if (caption == nil || caption.length == 0 || width <= 0) {
+    return 0;
+  }
+  // Measure the wrapped text height so long captions span multiple lines
+  // instead of being clipped to one.
+  CGRect rect =
+      [caption boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                            options:NSStringDrawingUsesLineFragmentOrigin |
+                                    NSStringDrawingUsesFontLeading
+                         attributes:@{
+                           NSFontAttributeName : [ImageAttachment captionFont]
+                         }
+                            context:nil];
+  return ceil(rect.size.height);
+}
+
 - (CGFloat)captionReservedHeight {
   NSString *caption = self.imageData.caption;
   if (caption == nil || caption.length == 0) {
     return 0;
   }
-  return kCaptionGap + ceil([ImageAttachment captionFont].lineHeight);
+  CGFloat textHeight =
+      [ImageAttachment captionHeightForCaption:caption
+                                         width:self.bounds.size.width];
+  if (textHeight <= 0) {
+    // No usable width yet (pre-layout) — reserve a single line so the row
+    // doesn't collapse; the next layout pass reserves the true wrapped height.
+    textHeight = ceil([ImageAttachment captionFont].lineHeight);
+  }
+  return kCaptionGap + textHeight;
 }
 
 - (CGRect)attachmentBoundsForTextContainer:(NSTextContainer *)textContainer

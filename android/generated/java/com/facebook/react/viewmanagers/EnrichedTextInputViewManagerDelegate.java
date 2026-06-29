@@ -141,6 +141,9 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "setSelection":
         mViewManager.setSelection(view, args.getInt(0), args.getInt(1));
         break;
+      case "focusTableCell":
+        mViewManager.focusTableCell(view, args.getInt(0), args.getInt(1), args.getInt(2));
+        break;
       case "toggleBold":
         mViewManager.toggleBold(view);
         break;
@@ -206,6 +209,9 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
         break;
       case "setSelectedImageCaption":
         mViewManager.setSelectedImageCaption(view, args.getString(0));
+        break;
+      case "insertHorizontalRule":
+        mViewManager.insertHorizontalRule(view);
         break;
       case "startMention":
         mViewManager.startMention(view, args.getString(0));

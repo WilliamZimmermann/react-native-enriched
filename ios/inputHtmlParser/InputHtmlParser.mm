@@ -173,6 +173,10 @@
                                          tableData:tableData
                                      withSelection:NO
                                     withDirtyRange:YES];
+      } else if ([styleType isEqualToNumber:@([HorizontalRuleStyle getType])]) {
+        [((HorizontalRuleStyle *)baseStyle) addHorizontalRuleAtRange:styleRange
+                                                       withSelection:NO
+                                                      withDirtyRange:YES];
       } else if ([styleType isEqualToNumber:@([HighlightStyle getType])]) {
         NSString *hexColor = (NSString *)stylePair.styleValue;
         UIColor *color = nil;
@@ -231,7 +235,8 @@
     // style range and trigger a substring-out-of-range NSException on the
     // second load.
     if (delta != 0 && ![styleType isEqualToNumber:@([ImageStyle getType])] &&
-        ![styleType isEqualToNumber:@([TableStyle getType])]) {
+        ![styleType isEqualToNumber:@([TableStyle getType])] &&
+        ![styleType isEqualToNumber:@([HorizontalRuleStyle getType])]) {
       zeroWidthSpaceOffset += delta;
     }
   }

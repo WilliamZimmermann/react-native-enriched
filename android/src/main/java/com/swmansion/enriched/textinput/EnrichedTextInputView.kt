@@ -137,6 +137,9 @@ class EnrichedTextInputView :
   private var typefaceDirty = false
   private var didAttachToWindow = false
   private var detectScrollMovement = false
+  // Configured native selection highlight color, restored after an image
+  // selection temporarily clears it (see onSelectionChanged).
+  private var baseHighlightColor: Int = highlightColor
   private var fontFamily: String? = null
   private var fontStyle: Int = ReactConstants.UNSET
   private var fontWeight: Int = ReactConstants.UNSET
@@ -319,6 +322,14 @@ class EnrichedTextInputView :
   ) {
     super.onSelectionChanged(selStart, selEnd)
     selection?.onSelection(selStart, selEnd)
+    // A lone selected inline image shows the JS resize overlay instead. Its
+    // span reserves a box taller than the image (image + caption space), so the
+    // native selection highlight would render a second, larger box around it —
+    // hide it while an image is selected, restore the configured color otherwise.
+    val imageSelected =
+      selEnd - selStart == 1 &&
+        (text?.getSpans(selStart, selEnd, EnrichedInputImageSpan::class.java)?.isNotEmpty() == true)
+    highlightColor = if (imageSelected) Color.TRANSPARENT else baseHighlightColor
   }
 
   override fun clearFocus() {
@@ -520,6 +531,9 @@ class EnrichedTextInputView :
   fun setSelectionColor(colorInt: Int?) {
     if (colorInt == null) return
 
+    // Remember the configured color so onSelectionChanged can restore it after
+    // an image selection cleared the highlight.
+    baseHighlightColor = colorInt
     highlightColor = colorInt
   }
 
@@ -974,6 +988,12 @@ class EnrichedTextInputView :
     if (!isValid) return
 
     parametrizedStyles?.setImageSpan(src, width, height)
+    layoutManager.invalidateLayout()
+  }
+
+  /** Inserts a horizontal rule (`<hr>`) at the caret, forced onto its own line. */
+  fun insertHorizontalRule() {
+    parametrizedStyles?.insertHorizontalRule()
     layoutManager.invalidateLayout()
   }
 

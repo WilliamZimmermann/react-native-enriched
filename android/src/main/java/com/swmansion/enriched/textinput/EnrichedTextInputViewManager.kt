@@ -462,6 +462,10 @@ class EnrichedTextInputViewManager :
     view?.setSelectedImageCaption(caption)
   }
 
+  override fun insertHorizontalRule(view: EnrichedTextInputView?) {
+    view?.insertHorizontalRule()
+  }
+
   override fun startMention(
     view: EnrichedTextInputView?,
     indicator: String,

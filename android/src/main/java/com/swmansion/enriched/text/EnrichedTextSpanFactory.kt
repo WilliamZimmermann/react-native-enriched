@@ -12,6 +12,7 @@ import com.swmansion.enriched.text.spans.EnrichedTextH3Span
 import com.swmansion.enriched.text.spans.EnrichedTextH4Span
 import com.swmansion.enriched.text.spans.EnrichedTextH5Span
 import com.swmansion.enriched.text.spans.EnrichedTextH6Span
+import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan
 import com.swmansion.enriched.text.spans.EnrichedTextImageSpan
 import com.swmansion.enriched.text.spans.EnrichedTextInlineCodeSpan
 import com.swmansion.enriched.text.spans.EnrichedTextItalicSpan
@@ -52,6 +53,8 @@ class EnrichedTextSpanFactory : EnrichedSpanFactory<EnrichedTextStyle> {
     width: Int,
     height: Int,
   ) = EnrichedTextImageSpan.createEnrichedImageSpan(source, width, height)
+
+  override fun createHorizontalRuleSpan() = EnrichedHorizontalRuleSpan()
 
   override fun createH1Span(style: EnrichedTextStyle) = EnrichedTextH1Span(style)
 

@@ -11,6 +11,7 @@ import com.swmansion.enriched.common.spans.EnrichedH3Span
 import com.swmansion.enriched.common.spans.EnrichedH4Span
 import com.swmansion.enriched.common.spans.EnrichedH5Span
 import com.swmansion.enriched.common.spans.EnrichedH6Span
+import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan
 import com.swmansion.enriched.common.spans.EnrichedImageSpan
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan
@@ -51,6 +52,8 @@ interface EnrichedSpanFactory<T> {
     width: Int,
     height: Int,
   ): EnrichedImageSpan
+
+  fun createHorizontalRuleSpan(): EnrichedHorizontalRuleSpan
 
   fun createH1Span(style: T): EnrichedH1Span
 

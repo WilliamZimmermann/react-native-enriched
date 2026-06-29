@@ -171,6 +171,26 @@ export interface OnChangeSelectionEvent {
   rectHeight: Float;
 }
 
+export interface OnTableCellTapEvent {
+  // Text-storage location of the tapped table's Object Replacement Character.
+  // The tap selects this 1-char range, so JS correlates the current selection
+  // to the tapped table (a table ORC looks identical to an image ORC).
+  charIndex: Int32;
+  // Ordinal of the tapped table among all tables in the document (0-based).
+  tableIndex: Int32;
+  row: Int32;
+  col: Int32;
+  // Tapped cell's frame in the editor view's coordinate space (points), so JS
+  // can position an inline cell editor over it.
+  x: Float;
+  y: Float;
+  width: Float;
+  height: Float;
+  // The table's rendered column widths as comma-separated fractions (sum ≈ 1),
+  // e.g. "0.3,0.4,0.3" — JS uses them to place per-column resize handles.
+  colFractions: string;
+}
+
 export interface OnRequestHtmlResultEvent {
   requestId: Int32;
   html: UnsafeMixed;
@@ -413,6 +433,7 @@ export interface NativeProps extends ViewProps {
   onMentionDetected?: DirectEventHandler<OnMentionDetectedInternal>;
   onMention?: DirectEventHandler<OnMentionEvent>;
   onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
+  onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
   onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
   onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
   onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;
@@ -454,6 +475,14 @@ interface NativeCommands {
     viewRef: React.ElementRef<ComponentType>,
     start: Int32,
     end: Int32
+  ) => void;
+  // Programmatically focus a table cell (by table ordinal + row/col); the
+  // native side emits onTableCellTap for it. Used for Tab navigation.
+  focusTableCell: (
+    viewRef: React.ElementRef<ComponentType>,
+    tableIndex: Int32,
+    row: Int32,
+    col: Int32
   ) => void;
 
   // Text formatting commands
@@ -501,6 +530,8 @@ interface NativeCommands {
     viewRef: React.ElementRef<ComponentType>,
     caption: string
   ) => void;
+  // Insert a horizontal rule (`<hr>`) at the caret, on its own line.
+  insertHorizontalRule: (viewRef: React.ElementRef<ComponentType>) => void;
   startMention: (
     viewRef: React.ElementRef<ComponentType>,
     indicator: string
@@ -570,6 +601,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'setValue',
     'insertText',
     'setSelection',
+    'focusTableCell',
 
     // Text formatting commands
     'toggleBold',
@@ -594,6 +626,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'removeLink',
     'addImage',
     'setSelectedImageCaption',
+    'insertHorizontalRule',
     'startMention',
     'addMention',
     'requestHTML',

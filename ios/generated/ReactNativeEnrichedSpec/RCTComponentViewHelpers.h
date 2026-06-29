@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setValue:(NSString *)text;
 - (void)insertText:(NSString *)text;
 - (void)setSelection:(NSInteger)start end:(NSInteger)end;
+- (void)focusTableCell:(NSInteger)tableIndex row:(NSInteger)row col:(NSInteger)col;
 - (void)toggleBold;
 - (void)toggleItalic;
 - (void)toggleUnderline;
@@ -43,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeLink:(NSInteger)start end:(NSInteger)end;
 - (void)addImage:(NSString *)uri width:(float)width height:(float)height;
 - (void)setSelectedImageCaption:(NSString *)caption;
+- (void)insertHorizontalRule;
 - (void)startMention:(NSString *)indicator;
 - (void)addMention:(NSString *)indicator text:(NSString *)text payload:(NSString *)payload;
 - (void)requestHTML:(NSInteger)requestId;
@@ -181,6 +183,42 @@ NSObject *arg1 = args[1];
   NSInteger end = [(NSNumber *)arg1 intValue];
 
   [componentView setSelection:start end:end];
+  return;
+}
+
+if ([commandName isEqualToString:@"focusTableCell"]) {
+#if RCT_DEBUG
+  if ([args count] != 3) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 3);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger tableIndex = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger row = [(NSNumber *)arg1 intValue];
+
+NSObject *arg2 = args[2];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg2, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"3rd")) {
+    return;
+  }
+#endif
+  NSInteger col = [(NSNumber *)arg2 intValue];
+
+  [componentView focusTableCell:tableIndex row:row col:col];
   return;
 }
 
@@ -567,6 +605,20 @@ if ([commandName isEqualToString:@"setSelectedImageCaption"]) {
   NSString * caption = (NSString *)arg0;
 
   [componentView setSelectedImageCaption:caption];
+  return;
+}
+
+if ([commandName isEqualToString:@"insertHorizontalRule"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView insertHorizontalRule];
   return;
 }
 

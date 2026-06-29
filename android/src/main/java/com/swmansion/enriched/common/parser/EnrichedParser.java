@@ -17,6 +17,7 @@ import com.swmansion.enriched.common.spans.EnrichedH3Span;
 import com.swmansion.enriched.common.spans.EnrichedH4Span;
 import com.swmansion.enriched.common.spans.EnrichedH5Span;
 import com.swmansion.enriched.common.spans.EnrichedH6Span;
+import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan;
 import com.swmansion.enriched.common.spans.EnrichedImageSpan;
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan;
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan;
@@ -199,6 +200,26 @@ public class EnrichedParser {
         }
         out.append("<br>\n");
       } else {
+        // A horizontal rule lives alone on its line; emit it as a top-level
+        // <hr> (not wrapped in <p>) so the web editor reads it as a block.
+        EnrichedHorizontalRuleSpan[] hrSpans =
+            text.getSpans(i, next, EnrichedHorizontalRuleSpan.class);
+        if (hrSpans.length > 0) {
+          if (isInUlList) {
+            isInUlList = false;
+            out.append("</ul>\n");
+          } else if (isInOlList) {
+            isInOlList = false;
+            out.append("</ol>\n");
+          } else if (isInCheckboxList) {
+            isInCheckboxList = false;
+            out.append("</ul>\n");
+          }
+          out.append("<hr>\n");
+          next++;
+          continue;
+        }
+
         EnrichedParagraphSpan[] paragraphStyles =
             text.getSpans(i, next, EnrichedParagraphSpan.class);
         String tag = getBlockTag(paragraphStyles);
@@ -582,6 +603,11 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       // Image content means the current tag is not empty (e.g. <li><img .../></li>).
       isEmptyTag = false;
       startImg(mSpannableStringBuilder, attributes, mSpanFactory);
+    } else if (tag.equalsIgnoreCase("hr")) {
+      // Void block element — rendered as a single object-replacement char on its
+      // own line.
+      isEmptyTag = false;
+      startHr(mSpannableStringBuilder, mSpanFactory);
     } else if (tag.equalsIgnoreCase("code")) {
       start(mSpannableStringBuilder, new Code());
     } else if (tag.equalsIgnoreCase("mention")) {
@@ -865,6 +891,18 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       ((EnrichedImageSpan) imageSpan).setCaption(caption);
     }
     text.setSpan(imageSpan, len, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+  }
+
+  private static <T> void startHr(Editable text, EnrichedSpanFactory<T> spanFactory) {
+    // Force the rule onto its own line: a newline boundary before it, the
+    // object-replacement char carrying the span, then a trailing newline so the
+    // following block starts fresh. appendNewlines collapses redundant breaks.
+    startBlockElement(text);
+    int len = text.length();
+    text.append(EnrichedConstants.ORC_STRING);
+    EnrichedHorizontalRuleSpan hrSpan = spanFactory.createHorizontalRuleSpan();
+    text.setSpan(hrSpan, len, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    text.append('\n');
   }
 
   private static void startA(Editable text, Attributes attributes) {

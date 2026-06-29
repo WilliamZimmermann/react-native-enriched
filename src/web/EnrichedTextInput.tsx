@@ -335,6 +335,9 @@ export const EnrichedTextInput = ({
           })
         );
       },
+      // Native-only (the rasterised-table cell navigation); no-op on web, where
+      // TipTap tables are natively editable.
+      focusTableCell: () => {},
       getHTML: () => Promise.resolve(normalizeHtmlFromTiptap(editor.getHTML())),
       getSelectionHtml: (start: number, end: number) => {
         const doc = editor.state.doc;
@@ -414,6 +417,8 @@ export const EnrichedTextInput = ({
         runFocused(editor, (c) =>
           c.updateAttributes('image', { caption: caption || null })
         ),
+      insertHorizontalRule: () =>
+        runFocused(editor, (c) => c.insertContent('<hr>')),
       measure: () => {},
       measureInWindow: () => {},
       measureLayout: () => {},

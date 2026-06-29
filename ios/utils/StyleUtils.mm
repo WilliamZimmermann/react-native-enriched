@@ -91,6 +91,8 @@
       @([CheckboxListStyle getType])
     ],
     @([ImageStyle getType]) :
+        @[ @([LinkStyle getType]), @([MentionStyle getType]) ],
+    @([HorizontalRuleStyle getType]) :
         @[ @([LinkStyle getType]), @([MentionStyle getType]) ]
   };
 }
@@ -101,15 +103,17 @@
     @([ItalicStyle getType]) : @[ @([CodeBlockStyle getType]) ],
     @([UnderlineStyle getType]) : @[ @([CodeBlockStyle getType]) ],
     @([StrikethroughStyle getType]) : @[ @([CodeBlockStyle getType]) ],
-    @([InlineCodeStyle getType]) :
-        @[ @([CodeBlockStyle getType]), @([ImageStyle getType]) ],
+    @([InlineCodeStyle getType]) : @[
+      @([CodeBlockStyle getType]), @([ImageStyle getType]),
+      @([HorizontalRuleStyle getType])
+    ],
     @([LinkStyle getType]) : @[
       @([CodeBlockStyle getType]), @([ImageStyle getType]),
-      @([InlineCodeStyle getType])
+      @([HorizontalRuleStyle getType]), @([InlineCodeStyle getType])
     ],
     @([MentionStyle getType]) : @[
       @([CodeBlockStyle getType]), @([ImageStyle getType]),
-      @([InlineCodeStyle getType])
+      @([HorizontalRuleStyle getType]), @([InlineCodeStyle getType])
     ],
     @([H1Style getType]) : @[],
     @([H2Style getType]) : @[],
@@ -123,7 +127,8 @@
     @([AlignmentStyle getType]) : @[],
     @([BlockQuoteStyle getType]) : @[],
     @([CodeBlockStyle getType]) : @[],
-    @([ImageStyle getType]) : @[ @([InlineCodeStyle getType]) ]
+    @([ImageStyle getType]) : @[ @([InlineCodeStyle getType]) ],
+    @([HorizontalRuleStyle getType]) : @[ @([InlineCodeStyle getType]) ]
   };
 }
 
@@ -140,7 +145,8 @@
     [OrderedListStyle class], [CheckboxListStyle class],
     [AlignmentStyle class],   [BlockQuoteStyle class],
     [CodeBlockStyle class],   [ImageStyle class],
-    [TableStyle class],       [HighlightStyle class]
+    [TableStyle class],       [HorizontalRuleStyle class],
+    [HighlightStyle class]
   ];
 
   // No viewer counterpart for TableStyle yet — the read-only viewer flavour
@@ -169,6 +175,7 @@
     [EnrichedTextCodeBlockStyle class],
     [EnrichedTextImageStyle class],
     [TableStyle class],
+    [HorizontalRuleStyle class],
     [HighlightStyle class]
   ];
 

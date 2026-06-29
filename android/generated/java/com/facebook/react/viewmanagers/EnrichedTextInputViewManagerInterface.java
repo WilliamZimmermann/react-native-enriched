@@ -52,6 +52,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void setValue(T view, String text);
   void insertText(T view, String text);
   void setSelection(T view, int start, int end);
+  void focusTableCell(T view, int tableIndex, int row, int col);
   void toggleBold(T view);
   void toggleItalic(T view);
   void toggleUnderline(T view);
@@ -74,6 +75,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void removeLink(T view, int start, int end);
   void addImage(T view, String uri, float width, float height);
   void setSelectedImageCaption(T view, String caption);
+  void insertHorizontalRule(T view);
   void startMention(T view, String indicator);
   void addMention(T view, String indicator, String text, String payload);
   void requestHTML(T view, int requestId);
