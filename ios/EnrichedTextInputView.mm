@@ -2237,6 +2237,23 @@ static UIColor *katavParseHexColor(NSString *hex) {
   return [UIMenu menuWithChildren:customActions];
 }
 
+// iOS 17+ presents a SEPARATE context menu for "text items" — links and (the
+// case that bites us) image attachments — via this delegate, independent of
+// editMenuForTextInRange above. A consumer that renders its own image/selection
+// menu sets disableNativeSelectionMenu, so suppress this one too: otherwise
+// tapping a selected image shows the system menu (Copy / Share / Save to
+// Photos…) on top of the JS menu. Returning nil hides the system menu for the
+// item; selection (and the JS menu it drives) is unaffected.
+- (UITextItemMenuConfiguration *)textView:(UITextView *)tv
+             menuConfigurationForTextItem:(UITextItem *)textItem
+                              defaultMenu:(UIMenu *)defaultMenu
+    API_AVAILABLE(ios(17.0)) {
+  if (_disableNativeSelectionMenu) {
+    return nil;
+  }
+  return [UITextItemMenuConfiguration configurationWithMenu:defaultMenu];
+}
+
 - (void)emitOnContextMenuItemPressEvent:(NSString *)itemText {
   auto emitter = [self getEventEmitter];
   if (emitter != nullptr) {
