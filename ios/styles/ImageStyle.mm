@@ -159,12 +159,31 @@ static NSString *const ImageAttributeName = @"EnrichedImage";
   // caption space and the overlay re-renders.
   NSRange imageRange = NSMakeRange(0, 0);
   NSRange inputRange = NSMakeRange(0, self.host.textView.textStorage.length);
-  [self.host.textView.textStorage attribute:ImageAttributeName
-                                    atIndex:location
-                      longestEffectiveRange:&imageRange
-                                    inRange:inputRange];
+  id existing =
+      [self.host.textView.textStorage attribute:NSAttachmentAttributeName
+                                        atIndex:location
+                          longestEffectiveRange:&imageRange
+                                        inRange:inputRange];
   if (imageRange.length == 0) {
     return;
+  }
+
+  // Hand the OLD attachment's already-decoded image to the by-URI cache before
+  // rebuilding, so the new attachment reuses it instead of re-fetching. The
+  // rebuild is only to refresh layout for the caption change — the bytes are
+  // unchanged. Without this, the rebuilt attachment re-downloads the image,
+  // which flickered/duplicated it online and collapsed it to 0×0 offline (a
+  // failed fetch leaves no image) while the glyph box kept the old size.
+  if ([existing isKindOfClass:[ImageAttachment class]]) {
+    ImageAttachment *existingImage = (ImageAttachment *)existing;
+    // Only seed from a REALLY loaded image. If the image failed to load,
+    // storedAnimatedImage is the SF-Symbol placeholder; seeding that would warm
+    // the cache with the broken image so every rebuild this session skips the
+    // re-fetch and shows the placeholder even after the network recovers.
+    if (existingImage.didLoad && existingImage.storedAnimatedImage != nil) {
+      [ImageAttachment seedCacheWithImage:existingImage.storedAnimatedImage
+                                   forURI:data.uri];
+    }
   }
 
   ImageAttachment *attachment =
@@ -177,6 +196,11 @@ static NSString *const ImageAttributeName = @"EnrichedImage";
   }
                                           range:imageRange];
   [self.host.textView.textStorage endEditing];
+  // Kept as-is (reserves caption space / re-renders the overlay). It does cause
+  // a second rebuild via ImageStyle.reapplyFromStylePair, but with the cache
+  // seeded above that rebuild now reuses the decoded image too (no re-fetch),
+  // so it's cheap. Left intact to avoid changing the proven layout path; if
+  // churn ever matters it can be removed once verified.
   [self.host.attributesManager addDirtyRange:imageRange];
 }
 

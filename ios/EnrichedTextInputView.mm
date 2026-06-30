@@ -2516,7 +2516,36 @@ static UIColor *katavParseHexColor(NSString *hex) {
   // the popover out relative to the editor view. Empty / collapsed
   // selections report a zero-size rect and the JS side hides the popover.
   CGRect selectionRect = CGRectZero;
-  if (textView.selectedRange.length > 0) {
+  // Special case: a selected inline image is a single Object-Replacement-Char
+  // glyph whose laid-out glyph rect reserves image + caption height. Handing
+  // that full rect to JS makes the green resize/selection box taller than the
+  // image (starting above it) and corrupts the resize aspect (width/height).
+  // For an ImageAttachment, emit the image's own on-screen frame instead —
+  // computed by the SAME helper that positions the image, so the box hugs the
+  // image exactly and stays correct after internal scroll. Tables / horizontal
+  // rules are also single-ORC attachments but are NOT ImageAttachments and
+  // their caption-reserved height is 0, so we deliberately exclude them: JS
+  // (activeTableRect) needs the table's full glyph rect for its column handles.
+  BOOL handledImageRect = NO;
+  if (textView.selectedRange.length == 1) {
+    id attachment =
+        [textView.textStorage attribute:NSAttachmentAttributeName
+                                atIndex:textView.selectedRange.location
+                         effectiveRange:NULL];
+    if ([attachment isKindOfClass:[ImageAttachment class]]) {
+      CGRect imageRect = [AttachmentLayoutUtils
+          frameForAttachment:(ImageAttachment *)attachment
+                     atRange:textView.selectedRange
+                    textView:textView
+                      config:config];
+      if (!CGRectIsNull(imageRect) && !CGRectIsInfinite(imageRect) &&
+          imageRect.size.width > 0 && imageRect.size.height > 0) {
+        selectionRect = [textView convertRect:imageRect toView:self];
+        handledImageRect = YES;
+      }
+    }
+  }
+  if (!handledImageRect && textView.selectedRange.length > 0) {
     UITextRange *textRange =
         [self katavTextRangeFromNSRange:textView.selectedRange
                              inTextView:textView];

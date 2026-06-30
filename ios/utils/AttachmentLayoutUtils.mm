@@ -56,14 +56,26 @@
                                                   textView:textView
                                                     config:config];
 
-                    // The attachment bounds reserve extra height below the
-                    // image for the caption; the UIImageView itself only
-                    // covers the image portion, the caption is a label
-                    // rendered below it (clipsToBounds = NO).
-                    CGFloat captionH = [attachment captionReservedHeight];
-                    CGRect imageRect = CGRectMake(rect.origin.x, rect.origin.y,
-                                                  rect.size.width,
-                                                  rect.size.height - captionH);
+                    // `rect` (from frameForAttachment:, which sizes off
+                    // attachment.bounds) is ALREADY the image-only frame —
+                    // ImageAttachment.attachmentBoundsForTextContainer: only
+                    // ever assigns `self.bounds` to the fitted IMAGE size; the
+                    // larger image+caption rect it computes is returned to
+                    // TextKit for line layout but never written back to
+                    // `bounds`. So no further adjustment is needed here.
+                    //
+                    // BUG (fixed): this used to also subtract
+                    // captionReservedHeight from rect.size.height, which
+                    // double-counted the caption space — caption space was
+                    // never part of `rect` to begin with, so this silently
+                    // shrank the displayed image by ~the caption's height
+                    // every time a caption was present (worse with longer
+                    // captions), even though the underlying image/bounds were
+                    // never actually corrupted (removing the caption — which
+                    // makes captionReservedHeight return 0 — "fixed" it,
+                    // which is what made this so easy to misdiagnose as a
+                    // data-loss bug instead of a pure layout-math bug).
+                    CGRect imageRect = rect;
 
                     // Get or Create the UIImageView for this specific
                     // attachment key
@@ -88,7 +100,8 @@
                     }
 
                     [self applyCaption:attachment.imageData.caption
-                           toImageView:imgView];
+                           toImageView:imgView
+                             textColor:[config primaryColor]];
                     UIImage *targetImage =
                         attachment.storedAnimatedImage ?: attachment.image;
 
@@ -118,7 +131,9 @@
   return activeAttachmentViews;
 }
 
-+ (void)applyCaption:(NSString *)caption toImageView:(UIImageView *)imgView {
++ (void)applyCaption:(NSString *)caption
+         toImageView:(UIImageView *)imgView
+           textColor:(UIColor *)textColor {
   static const NSInteger kCaptionLabelTag = 0x43415054; // 'CAPT'
   UILabel *label = (UILabel *)[imgView viewWithTag:kCaptionLabelTag];
   if (caption == nil || caption.length == 0) {
@@ -129,13 +144,22 @@
     label = [[UILabel alloc] init];
     label.tag = kCaptionLabelTag;
     label.font = [ImageAttachment captionFont];
-    label.textColor = [UIColor secondaryLabelColor];
     label.textAlignment = NSTextAlignmentCenter;
     // 0 = wrap across as many lines as the caption needs.
     label.numberOfLines = 0;
     label.lineBreakMode = NSLineBreakByWordWrapping;
     [imgView addSubview:label];
   }
+  // Tint the caption from the editor's body text color (config primaryColor,
+  // driven by the JS `color` style and therefore theme-aware), dimmed to read
+  // as secondary. Set on EVERY layout pass — not just on first creation — so a
+  // light/dark toggle (which re-applies styles and re-lays the attachments)
+  // recolors an existing caption. Deliberately NOT secondaryLabelColor: that
+  // dynamic color follows the iOS SYSTEM appearance, so when the in-app theme
+  // differed from the system the caption was wrong — a caption added in the
+  // app's dark mode stayed light/invisible after switching the app to light.
+  label.textColor = textColor != nil ? [textColor colorWithAlphaComponent:0.6]
+                                     : [UIColor secondaryLabelColor];
   label.text = caption;
   CGFloat width = imgView.bounds.size.width;
   CGFloat textH = [ImageAttachment captionHeightForCaption:caption width:width];
@@ -174,8 +198,17 @@
   }
 
   // Calculate (Baseline Alignment)
-  CGFloat targetY =
-      CGRectGetMaxY(lineRect) + font.descender - attachmentSize.height;
+  // The attachment reserves the caption space BELOW the baseline (see
+  // attachmentBoundsForTextContainer: origin.y = descender - caption), so the
+  // line's true descent is |descender| + caption. font.descender alone locates
+  // only the |descender| part, which would land the image `caption` px below
+  // the true baseline and leave an empty band above it. Subtract the caption
+  // reserved height so the image sits at the TOP of its glyph box; the caption
+  // label is then drawn directly below the image inside the reserved descent.
+  // caption == 0 (no caption) makes this identical to the prior behavior.
+  CGFloat caption = [attachment captionReservedHeight];
+  CGFloat targetY = CGRectGetMaxY(lineRect) + font.descender -
+                    attachmentSize.height - caption;
   CGRect rect =
       CGRectMake(glyphRect.origin.x + textView.textContainerInset.left,
                  targetY + textView.textContainerInset.top,

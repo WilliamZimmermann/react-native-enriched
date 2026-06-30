@@ -24,6 +24,15 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
 
 @implementation ImageAttachment
 
++ (void)seedCacheWithImage:(UIImage *)image forURI:(NSString *)uri {
+  if (image != nil && uri.length > 0) {
+    CGFloat scale = image.scale;
+    NSUInteger cost = (NSUInteger)(image.size.width * scale *
+                                   image.size.height * scale * 4.0);
+    [ImageAttachmentCache() setObject:image forKey:uri cost:cost];
+  }
+}
+
 - (instancetype)initWithImageData:(ImageData *)data {
   self = [super initWithURI:data.uri width:data.width height:data.height];
   if (!self)
@@ -57,6 +66,7 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
           CGRectMake(0, 0, cachedImage.size.width, cachedImage.size.height);
     }
     self.storedAnimatedImage = cachedImage;
+    self.didLoad = YES; // cache only ever holds successfully-decoded images
     dispatch_async(dispatch_get_main_queue(), ^{
       [self notifyUpdate];
     });
@@ -193,6 +203,10 @@ static const CGFloat kCaptionGap = 4.0;
         self.height = img.size.height;
         self.bounds = CGRectMake(0, 0, img.size.width, img.size.height);
       }
+      // A real image only when bytes actually loaded — on failure `img` is the
+      // SF-Symbol placeholder, which must NOT be treated as loaded (or seeded
+      // into the cache by callers).
+      self.didLoad = (bytes != nil && img != nil);
       self.storedAnimatedImage = img;
       [self notifyUpdate];
     });

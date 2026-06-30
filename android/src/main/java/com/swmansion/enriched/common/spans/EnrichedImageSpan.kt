@@ -3,6 +3,7 @@ package com.swmansion.enriched.common.spans
 import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.drawable.AnimatedImageDrawable
@@ -40,9 +41,21 @@ open class EnrichedImageSpan :
     Paint(Paint.ANTI_ALIAS_FLAG).apply {
       val density = Resources.getSystem().displayMetrics.density
       textSize = 13f * density
+      // Fallback only until the first draw; draw() re-tints this from the body
+      // text color so the caption follows the active (in-app) theme.
       color = 0xFF8A8A8A.toInt()
     }
   }
+
+  /** Caption tint = the body text color (theme-aware), dimmed to read as
+   *  secondary. The old fixed gray ignored the theme entirely. */
+  private fun captionColorFrom(textColor: Int): Int =
+    Color.argb(
+      (Color.alpha(textColor) * 0.6f).toInt(),
+      Color.red(textColor),
+      Color.green(textColor),
+      Color.blue(textColor),
+    )
 
   private fun captionDensityGap(): Float = 4f * Resources.getSystem().displayMetrics.density
 
@@ -99,6 +112,11 @@ open class EnrichedImageSpan :
 
     // NOTE: native caption rendering is best-effort and needs on-device tuning.
     if (!cap.isNullOrBlank()) {
+      // Tint the caption from the current body text color (theme-aware) so it's
+      // dark on the light surface and light on the dark surface, instead of a
+      // fixed gray that ignored the theme. Set per-draw so a theme toggle (which
+      // re-tints the text paint) recolors the caption too.
+      captionPaint.color = captionColorFrom(paint.color)
       // Word-wrap the caption across the image width so long text shows every
       // line instead of being clipped/measured to one (the StaticLayout's height
       // matches captionExtraHeight, so reserved space == drawn space).
