@@ -1973,11 +1973,6 @@ static UIColor *katavParseHexColor(NSString *hex) {
   }
   [imageStyleClass setSelectedImageCaption:caption];
   [self anyTextMayHaveBeenModified];
-  // Caption is an image attachment attribute, not text —
-  // anyTextMayHaveBeenModified only emits onChangeHtml when textStorage.string
-  // changes, so we must explicitly fire the HTML event here so autosave
-  // captures the caption change.
-  [self tryEmittingOnChangeHtmlEvent];
 }
 
 - (void)insertHorizontalRule {
