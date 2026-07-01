@@ -587,6 +587,15 @@ class EnrichedTextInputViewManager :
     // No-op: wired natively on iOS. Android isn't a tablet target yet.
   }
 
+  override fun focusTableCell(
+    view: EnrichedTextInputView?,
+    tableIndex: Int,
+    row: Int,
+    col: Int,
+  ) {
+    // No-op: table cell focus is wired natively on iOS. Android isn't a tablet target yet.
+  }
+
   override fun measure(
     context: Context,
     localData: ReadableMap?,

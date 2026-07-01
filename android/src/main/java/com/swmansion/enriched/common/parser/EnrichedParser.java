@@ -886,9 +886,12 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
 
     int len = text.length();
     text.append("￼");
-    T imageSpan = spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height));
-    if (caption != null && !caption.isEmpty() && imageSpan instanceof EnrichedImageSpan) {
-      ((EnrichedImageSpan) imageSpan).setCaption(caption);
+    // createImageSpan returns the concrete EnrichedImageSpan (like
+    // createHorizontalRuleSpan), not the generic T.
+    EnrichedImageSpan imageSpan =
+        spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height));
+    if (caption != null && !caption.isEmpty()) {
+      imageSpan.setCaption(caption);
     }
     text.setSpan(imageSpan, len, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
   }

@@ -14,6 +14,7 @@ import android.os.Looper
 import android.text.Layout
 import android.text.Spannable
 import android.text.StaticLayout
+import android.text.TextPaint
 import android.text.style.ImageSpan
 import android.util.Log
 import androidx.core.graphics.drawable.toDrawable
@@ -37,8 +38,9 @@ open class EnrichedImageSpan :
     this.height = height
   }
 
-  private val captionPaint: Paint by lazy {
-    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+  // TextPaint (not Paint): StaticLayout.Builder.obtain requires a TextPaint.
+  private val captionPaint: TextPaint by lazy {
+    TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
       val density = Resources.getSystem().displayMetrics.density
       textSize = 13f * density
       // Fallback only until the first draw; draw() re-tints this from the body
