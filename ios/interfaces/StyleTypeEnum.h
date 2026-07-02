@@ -26,5 +26,7 @@ typedef NS_ENUM(NSInteger, StyleType) {
   Underline,
   Strikethrough,
   Highlight,
+  AiSuggestion,
+  AiFlag,
   None,
 };

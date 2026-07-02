@@ -93,7 +93,11 @@
     @([ImageStyle getType]) :
         @[ @([LinkStyle getType]), @([MentionStyle getType]) ],
     @([HorizontalRuleStyle getType]) :
-        @[ @([LinkStyle getType]), @([MentionStyle getType]) ]
+        @[ @([LinkStyle getType]), @([MentionStyle getType]) ],
+    // AI marks are overlays applied programmatically — they conflict with
+    // nothing and coexist with any inline/block formatting.
+    @([AiSuggestionStyle getType]) : @[],
+    @([AiFlagStyle getType]) : @[]
   };
 }
 
@@ -128,7 +132,9 @@
     @([BlockQuoteStyle getType]) : @[],
     @([CodeBlockStyle getType]) : @[],
     @([ImageStyle getType]) : @[ @([InlineCodeStyle getType]) ],
-    @([HorizontalRuleStyle getType]) : @[ @([InlineCodeStyle getType]) ]
+    @([HorizontalRuleStyle getType]) : @[ @([InlineCodeStyle getType]) ],
+    @([AiSuggestionStyle getType]) : @[],
+    @([AiFlagStyle getType]) : @[]
   };
 }
 
@@ -146,7 +152,8 @@
     [AlignmentStyle class],   [BlockQuoteStyle class],
     [CodeBlockStyle class],   [ImageStyle class],
     [TableStyle class],       [HorizontalRuleStyle class],
-    [HighlightStyle class]
+    [HighlightStyle class],   [AiSuggestionStyle class],
+    [AiFlagStyle class]
   ];
 
   // No viewer counterpart for TableStyle yet — the read-only viewer flavour
@@ -176,7 +183,9 @@
     [EnrichedTextImageStyle class],
     [TableStyle class],
     [HorizontalRuleStyle class],
-    [HighlightStyle class]
+    [HighlightStyle class],
+    [AiSuggestionStyle class],
+    [AiFlagStyle class]
   ];
 
   NSMutableDictionary *dict = [NSMutableDictionary new];

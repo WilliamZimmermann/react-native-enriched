@@ -1,4 +1,5 @@
 #pragma once
+#import "AiMarkParams.h"
 #import "ImageData.h"
 #import "LinkData.h"
 #import "MentionParams.h"
@@ -135,4 +136,31 @@
                   withDirtyRange:(BOOL)withDirtyRange;
 // YES when the location carries the horizontal-rule attribute.
 - (BOOL)isHorizontalRuleAt:(NSUInteger)location;
+@end
+
+// Shared base for the two AI track-changes marks. `getKey`/`aiKind` and the
+// pending/accepted visual are provided by the concrete subclasses below.
+@interface AiMarkStyle : StyleBase
+// 'suggestion' | 'flag' — used by the tap handler to label the emitted event.
+- (NSString *)aiKind;
+// Payload at a location (nil when the location carries no mark of this kind).
+- (AiMarkParams *)paramsAt:(NSUInteger)location;
+// Apply the mark (with payload) over an explicit range (the enrich apply
+// phase).
+- (void)applyAiMarkAtRange:(NSRange)range params:(AiMarkParams *)params;
+// Review actions keyed by aiId.
+- (void)acceptId:(NSString *)aiId; // status -> accepted, keep text + mark
+- (void)stripId:
+    (NSString *)aiId; // remove mark, keep text (claim / flag reject)
+- (void)deleteId:(NSString *)aiId; // delete the marked text (suggestion reject)
+// Bulk actions over every pending mark of this kind.
+- (void)acceptAllPending;
+- (void)deleteAllPending;
+- (void)stripAllPending;
+@end
+
+@interface AiSuggestionStyle : AiMarkStyle
+@end
+
+@interface AiFlagStyle : AiMarkStyle
 @end
