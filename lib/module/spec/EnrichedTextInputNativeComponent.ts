@@ -637,10 +637,7 @@ interface NativeCommands {
     aiId: string,
     deleteText: boolean
   ) => void;
-  claimAiMark: (
-    viewRef: React.ElementRef<ComponentType>,
-    aiId: string
-  ) => void;
+  claimAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string) => void;
   acceptAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
   rejectAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
   rejectAllAiFlags: (viewRef: React.ElementRef<ComponentType>) => void;
