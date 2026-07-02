@@ -219,6 +219,11 @@
             }
           }
         }
+      } else if ([styleType isEqualToNumber:@([AiSuggestionStyle getType])] ||
+                 [styleType isEqualToNumber:@([AiFlagStyle getType])]) {
+        AiMarkParams *aiParams = (AiMarkParams *)stylePair.styleValue;
+        [((AiMarkStyle *)baseStyle) applyAiMarkAtRange:styleRange
+                                                params:aiParams];
       } else {
         [baseStyle add:styleRange
                 withTyping:shouldAddTypingAttr

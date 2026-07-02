@@ -1324,6 +1324,46 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     NSInteger end = [((NSNumber *)args[1]) integerValue];
     // The only color formatting is highlight (background); reuse its removal.
     [self removeHighlightAt:start end:end];
+  } else if ([commandName isEqualToString:@"applyAiSuggestion"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    NSString *aiId = (NSString *)args[2];
+    NSString *status = (NSString *)args[3];
+    NSString *model = (NSString *)args[4];
+    [self applyAiMark:AiSuggestion
+                start:start
+                  end:end
+                 aiId:aiId
+               status:status
+                model:model
+          explanation:@""];
+  } else if ([commandName isEqualToString:@"applyAiFlag"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    NSString *aiId = (NSString *)args[2];
+    NSString *status = (NSString *)args[3];
+    NSString *explanation = (NSString *)args[4];
+    [self applyAiMark:AiFlag
+                start:start
+                  end:end
+                 aiId:aiId
+               status:status
+                model:@""
+          explanation:explanation];
+  } else if ([commandName isEqualToString:@"acceptAiMark"]) {
+    [self acceptAiMarkWithId:(NSString *)args[0]];
+  } else if ([commandName isEqualToString:@"rejectAiMark"]) {
+    NSString *aiId = (NSString *)args[0];
+    BOOL deleteText = [((NSNumber *)args[1]) boolValue];
+    [self rejectAiMarkWithId:aiId deleteText:deleteText];
+  } else if ([commandName isEqualToString:@"claimAiMark"]) {
+    [self claimAiMarkWithId:(NSString *)args[0]];
+  } else if ([commandName isEqualToString:@"acceptAllAiSuggestions"]) {
+    [self acceptAllAiSuggestions];
+  } else if ([commandName isEqualToString:@"rejectAllAiSuggestions"]) {
+    [self rejectAllAiSuggestions];
+  } else if ([commandName isEqualToString:@"rejectAllAiFlags"]) {
+    [self rejectAllAiFlags];
   } else if ([commandName isEqualToString:@"addMention"]) {
     NSString *indicator = (NSString *)args[0];
     NSString *text = (NSString *)args[1];
@@ -1847,6 +1887,83 @@ static UIColor *katavParseHexColor(NSString *hex) {
   }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
   [highlightStyle removeHighlightInRange:range];
+  [self anyTextMayHaveBeenModified];
+}
+
+// MARK: - AI track-changes marks
+
+- (AiSuggestionStyle *)aiSuggestionStyle {
+  return (AiSuggestionStyle *)stylesDict[@([AiSuggestionStyle getType])];
+}
+
+- (AiFlagStyle *)aiFlagStyle {
+  return (AiFlagStyle *)stylesDict[@([AiFlagStyle getType])];
+}
+
+- (void)applyAiMark:(StyleType)type
+              start:(NSInteger)start
+                end:(NSInteger)end
+               aiId:(NSString *)aiId
+             status:(NSString *)status
+              model:(NSString *)model
+        explanation:(NSString *)explanation {
+  AiMarkStyle *style = (AiMarkStyle *)stylesDict[@(type)];
+  if (style == nullptr) {
+    return;
+  }
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
+  AiMarkParams *params = [[AiMarkParams alloc] init];
+  params.aiId = aiId ?: @"";
+  params.status = status.length > 0 ? status : @"pending";
+  params.model = model ?: @"";
+  params.explanation = explanation ?: @"";
+  [style applyAiMarkAtRange:NSMakeRange(rangeStart, rangeEnd - rangeStart)
+                     params:params];
+  [self anyTextMayHaveBeenModified];
+}
+
+// aiIds are unique across kinds, so applying the action to both styles is safe:
+// only the style that actually carries the id mutates, the other no-ops.
+- (void)acceptAiMarkWithId:(NSString *)aiId {
+  [[self aiSuggestionStyle] acceptId:aiId];
+  [[self aiFlagStyle] acceptId:aiId];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)rejectAiMarkWithId:(NSString *)aiId deleteText:(BOOL)deleteText {
+  if (deleteText) {
+    [[self aiSuggestionStyle] deleteId:aiId];
+    [[self aiFlagStyle] deleteId:aiId];
+  } else {
+    [[self aiSuggestionStyle] stripId:aiId];
+    [[self aiFlagStyle] stripId:aiId];
+  }
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)claimAiMarkWithId:(NSString *)aiId {
+  [[self aiSuggestionStyle] stripId:aiId];
+  [[self aiFlagStyle] stripId:aiId];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)acceptAllAiSuggestions {
+  [[self aiSuggestionStyle] acceptAllPending];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)rejectAllAiSuggestions {
+  [[self aiSuggestionStyle] deleteAllPending];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)rejectAllAiFlags {
+  [[self aiFlagStyle] stripAllPending];
   [self anyTextMayHaveBeenModified];
 }
 

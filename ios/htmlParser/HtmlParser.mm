@@ -107,9 +107,10 @@
  * you MUST add it to the `textTags` set below.
  */
 + (NSString *)stripExtraWhiteSpacesAndNewlines:(NSString *)html {
-  NSSet *textTags = [NSSet setWithObjects:@"p", @"h1", @"h2", @"h3", @"h4",
-                                          @"h5", @"h6", @"li", @"b", @"a", @"s",
-                                          @"mention", @"code", @"u", @"i", nil];
+  NSSet *textTags =
+      [NSSet setWithObjects:@"p", @"h1", @"h2", @"h3", @"h4", @"h5", @"h6",
+                            @"li", @"b", @"a", @"s", @"mention", @"code", @"u",
+                            @"i", @"span", nil];
 
   NSMutableString *output = [NSMutableString stringWithCapacity:html.length];
   NSMutableString *currentTagBuffer = [NSMutableString string];
@@ -1224,6 +1225,27 @@
       [styleArr addObject:@([BlockQuoteStyle getType])];
     } else if ([tagName isEqualToString:@"codeblock"]) {
       [styleArr addObject:@([CodeBlockStyle getType])];
+    } else if ([tagName isEqualToString:@"span"]) {
+      // AI track-changes marks round-trip as <span data-ai-suggestion> /
+      // <span data-ai-flag>. Any other <span> is dropped (falls through).
+      NSString *suggestionStatus = [self aiAttrValue:@"data-ai-suggestion"
+                                                  in:params];
+      NSString *flagStatus = [self aiAttrValue:@"data-ai-flag" in:params];
+      if (suggestionStatus == nullptr && flagStatus == nullptr) {
+        continue;
+      }
+      BOOL isFlag = flagStatus != nullptr;
+      [styleArr addObject:@(isFlag ? [AiFlagStyle getType]
+                                   : [AiSuggestionStyle getType])];
+      AiMarkParams *aiParams = [[AiMarkParams alloc] init];
+      aiParams.aiId = [self aiAttrValue:@"data-ai-id" in:params] ?: @"";
+      aiParams.status = (isFlag ? flagStatus : suggestionStatus) ?: @"pending";
+      aiParams.model = [self aiAttrValue:@"data-ai-model" in:params] ?: @"";
+      aiParams.explanation =
+          [self aiUnescapeAttr:[self aiAttrValue:@"data-ai-explanation"
+                                              in:params]]
+              ?: @"";
+      stylePair.styleValue = aiParams;
     } else {
       // some other external tags like span just don't get put into the
       // processed styles
@@ -1935,8 +1957,87 @@
              [style isEqualToNumber:@([CodeBlockStyle getType])]) {
     // blockquotes and codeblock use <p> tags the same way lists use <li>
     return [NSString stringWithFormat:@"p%@", cssStyleString];
+  } else if ([style isEqualToNumber:@([AiSuggestionStyle getType])]) {
+    if (openingTag) {
+      AiSuggestionStyle *s =
+          (AiSuggestionStyle *)host.stylesDict[@([AiSuggestionStyle getType])];
+      AiMarkParams *p = [s paramsAt:location];
+      if (p != nullptr) {
+        return
+            [NSString stringWithFormat:
+                          @"span data-ai-suggestion=\"%@\" data-ai-id=\"%@\" "
+                          @"data-ai-model=\"%@\"",
+                          p.status ?: @"pending", p.aiId ?: @"",
+                          [self aiEscapeAttr:p.model] ?: @""];
+      }
+    }
+    return @"span";
+  } else if ([style isEqualToNumber:@([AiFlagStyle getType])]) {
+    if (openingTag) {
+      AiFlagStyle *s = (AiFlagStyle *)host.stylesDict[@([AiFlagStyle getType])];
+      AiMarkParams *p = [s paramsAt:location];
+      if (p != nullptr) {
+        return [NSString
+            stringWithFormat:@"span data-ai-flag=\"%@\" data-ai-id=\"%@\" "
+                             @"data-ai-explanation=\"%@\"",
+                             p.status ?: @"pending", p.aiId ?: @"",
+                             [self aiEscapeAttr:p.explanation] ?: @""];
+      }
+    }
+    return @"span";
   }
   return @"";
+}
+
+// MARK: - AI mark HTML attribute helpers
+
+// Value of a hyphenated attribute (e.g. data-ai-id) from a raw tag param
+// string; nil when the attribute is absent.
++ (NSString *)aiAttrValue:(NSString *)name in:(NSString *)params {
+  if (params == nullptr || params.length == 0) {
+    return nullptr;
+  }
+  NSString *pattern = [NSString
+      stringWithFormat:@"%@\\s*=\\s*\"([^\"]*)\"",
+                       [NSRegularExpression escapedPatternForString:name]];
+  NSRegularExpression *re =
+      [NSRegularExpression regularExpressionWithPattern:pattern
+                                                options:0
+                                                  error:nullptr];
+  NSTextCheckingResult *m =
+      [re firstMatchInString:params
+                     options:0
+                       range:NSMakeRange(0, params.length)];
+  if (m == nullptr) {
+    return nullptr;
+  }
+  return [params substringWithRange:[m rangeAtIndex:1]];
+}
+
+// Escape a value for embedding in a double-quoted HTML attribute (&amp; last).
++ (NSString *)aiEscapeAttr:(NSString *)s {
+  if (s == nullptr) {
+    return @"";
+  }
+  NSString *out = [s stringByReplacingOccurrencesOfString:@"&"
+                                               withString:@"&amp;"];
+  out = [out stringByReplacingOccurrencesOfString:@"\"" withString:@"&quot;"];
+  out = [out stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"];
+  out = [out stringByReplacingOccurrencesOfString:@">" withString:@"&gt;"];
+  return out;
+}
+
+// Reverse aiEscapeAttr: (&amp; last).
++ (NSString *)aiUnescapeAttr:(NSString *)s {
+  if (s == nullptr) {
+    return nullptr;
+  }
+  NSString *out = [s stringByReplacingOccurrencesOfString:@"&quot;"
+                                               withString:@"\""];
+  out = [out stringByReplacingOccurrencesOfString:@"&lt;" withString:@"<"];
+  out = [out stringByReplacingOccurrencesOfString:@"&gt;" withString:@">"];
+  out = [out stringByReplacingOccurrencesOfString:@"&amp;" withString:@"&"];
+  return out;
 }
 
 + (NSString *)prepareCssStyleString:(NSInteger)location
