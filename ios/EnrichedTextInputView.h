@@ -39,6 +39,9 @@ NS_ASSUME_NONNULL_BEGIN
   NSValue *dotReplacementRange;
 @public
   NSArray<NSDictionary *> *textShortcuts;
+  // aiId of the AI mark the caret currently sits inside, so onAiMarkTap fires
+  // once when the caret enters a mark rather than on every selection change.
+  NSString *_Nullable lastAiMarkId;
 }
 - (CGSize)measureSize:(CGFloat)maxWidth;
 - (void)emitOnLinkDetectedEvent:(LinkData *)linkData range:(NSRange)range;

@@ -2697,6 +2697,71 @@ static UIColor *katavParseHexColor(NSString *hex) {
          .rectWidth = static_cast<Float>(selectionRect.size.width),
          .rectHeight = static_cast<Float>(selectionRect.size.height)});
   }
+
+  [self maybeEmitAiMarkTap];
+}
+
+// Fires onAiMarkTap once when the caret enters an AI suggestion/flag mark (the
+// caret moves into the mark on tap). Guarded by lastAiMarkId so it doesn't
+// re-fire on every selection change while the caret stays inside the same mark.
+- (void)maybeEmitAiMarkTap {
+  NSUInteger textLength = textView.textStorage.length;
+  NSString *currentAiId = nil;
+
+  if (textView.selectedRange.location < textLength) {
+    NSUInteger loc = textView.selectedRange.location;
+    NSRange whole = NSMakeRange(0, textLength);
+    NSRange markRange = NSMakeRange(NSNotFound, 0);
+    NSString *kind = nil;
+    AiMarkParams *params = nil;
+
+    AiMarkParams *sug = [textView.textStorage attribute:@"EnrichedAiSuggestion"
+                                                atIndex:loc
+                                  longestEffectiveRange:&markRange
+                                                inRange:whole];
+    if ([sug isKindOfClass:[AiMarkParams class]]) {
+      params = sug;
+      kind = @"suggestion";
+    } else {
+      AiMarkParams *flg = [textView.textStorage attribute:@"EnrichedAiFlag"
+                                                  atIndex:loc
+                                    longestEffectiveRange:&markRange
+                                                  inRange:whole];
+      if ([flg isKindOfClass:[AiMarkParams class]]) {
+        params = flg;
+        kind = @"flag";
+      }
+    }
+
+    if (params != nil) {
+      currentAiId = params.aiId ?: @"";
+      if (![currentAiId isEqualToString:lastAiMarkId]) {
+        CGRect markRect = CGRectZero;
+        UITextRange *tr = [self katavTextRangeFromNSRange:markRange
+                                               inTextView:textView];
+        if (tr != nil) {
+          CGRect raw = [textView firstRectForRange:tr];
+          if (!CGRectIsNull(raw) && !CGRectIsInfinite(raw)) {
+            markRect = [textView convertRect:raw toView:self];
+          }
+        }
+        auto emitter = [self getEventEmitter];
+        if (emitter != nullptr) {
+          emitter->onAiMarkTap(
+              {.kind = [kind toCppString],
+               .aiId = [(params.aiId ?: @"") toCppString],
+               .status = [(params.status ?: @"pending") toCppString],
+               .explanation = [(params.explanation ?: @"") toCppString],
+               .rectX = static_cast<Float>(markRect.origin.x),
+               .rectY = static_cast<Float>(markRect.origin.y),
+               .rectWidth = static_cast<Float>(markRect.size.width),
+               .rectHeight = static_cast<Float>(markRect.size.height)});
+        }
+      }
+    }
+  }
+
+  lastAiMarkId = currentAiId;
 }
 
 // UITextView is a UIScrollView and scrolls its content internally, but the
