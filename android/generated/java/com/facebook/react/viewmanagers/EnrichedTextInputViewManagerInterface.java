@@ -86,4 +86,12 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void removeHighlight(T view, int start, int end);
   void clearFormatting(T view, int start, int end);
   void clearColors(T view, int start, int end);
+  void applyAiSuggestion(T view, int start, int end, String aiId, String status, String model);
+  void applyAiFlag(T view, int start, int end, String aiId, String status, String explanation);
+  void acceptAiMark(T view, String aiId);
+  void rejectAiMark(T view, String aiId, boolean deleteText);
+  void claimAiMark(T view, String aiId);
+  void acceptAllAiSuggestions(T view);
+  void rejectAllAiSuggestions(T view);
+  void rejectAllAiFlags(T view);
 }

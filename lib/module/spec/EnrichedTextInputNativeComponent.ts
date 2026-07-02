@@ -191,6 +191,21 @@ export interface OnTableCellTapEvent {
   colFractions: string;
 }
 
+// Fired when the user taps inside an AI suggestion/flag span. `kind` is
+// 'suggestion' | 'flag'; the rect is the mark's on-screen bounding box in the
+// editor view's coordinate space (points) so JS can anchor the accept/reject
+// popover over it.
+export interface OnAiMarkTapEvent {
+  kind: string;
+  aiId: string;
+  status: string;
+  explanation: string;
+  rectX: Float;
+  rectY: Float;
+  rectWidth: Float;
+  rectHeight: Float;
+}
+
 export interface OnRequestHtmlResultEvent {
   requestId: Int32;
   html: UnsafeMixed;
@@ -434,6 +449,7 @@ export interface NativeProps extends ViewProps {
   onMention?: DirectEventHandler<OnMentionEvent>;
   onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
   onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
+  onAiMarkTap?: DirectEventHandler<OnAiMarkTapEvent>;
   onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
   onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
   onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;
@@ -589,6 +605,45 @@ interface NativeCommands {
     start: Int32,
     end: Int32
   ) => void;
+
+  // AI track-changes marks. `applyAiSuggestion`/`applyAiFlag` add the mark over
+  // an explicit range (the apply phase). The review actions are keyed by aiId:
+  // acceptAiMark flips status=accepted; rejectAiMark deletes the ranges when
+  // `deleteText` (gap-fill suggestions) or strips the mark keeping text (flags);
+  // claimAiMark strips the mark, keeping the text as the student's own. The
+  // `*All*` variants act on every pending mark of that kind.
+  applyAiSuggestion: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    aiId: string,
+    status: string,
+    model: string
+  ) => void;
+  applyAiFlag: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    aiId: string,
+    status: string,
+    explanation: string
+  ) => void;
+  acceptAiMark: (
+    viewRef: React.ElementRef<ComponentType>,
+    aiId: string
+  ) => void;
+  rejectAiMark: (
+    viewRef: React.ElementRef<ComponentType>,
+    aiId: string,
+    deleteText: boolean
+  ) => void;
+  claimAiMark: (
+    viewRef: React.ElementRef<ComponentType>,
+    aiId: string
+  ) => void;
+  acceptAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+  rejectAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+  rejectAllAiFlags: (viewRef: React.ElementRef<ComponentType>) => void;
 }
 
 export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
@@ -637,6 +692,14 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'removeHighlight',
     'clearFormatting',
     'clearColors',
+    'applyAiSuggestion',
+    'applyAiFlag',
+    'acceptAiMark',
+    'rejectAiMark',
+    'claimAiMark',
+    'acceptAllAiSuggestions',
+    'rejectAllAiSuggestions',
+    'rejectAllAiFlags',
   ],
 });
 

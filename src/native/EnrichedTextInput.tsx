@@ -72,6 +72,7 @@ export const EnrichedTextInput = ({
   onEndMention,
   onChangeSelection,
   onTableCellTap,
+  onAiMarkTap,
   onKeyPress,
   onSubmitEditing,
   returnKeyType,
@@ -340,6 +341,56 @@ export const EnrichedTextInput = ({
     ) => {
       Commands.setTextAlignment(nullthrows(nativeRef.current), alignment);
     },
+    applyAiSuggestion: (
+      start: number,
+      end: number,
+      aiId: string,
+      status: 'pending' | 'accepted',
+      model: string
+    ) => {
+      Commands.applyAiSuggestion(
+        nullthrows(nativeRef.current),
+        start,
+        end,
+        aiId,
+        status,
+        model
+      );
+    },
+    applyAiFlag: (
+      start: number,
+      end: number,
+      aiId: string,
+      status: 'pending' | 'accepted',
+      explanation: string
+    ) => {
+      Commands.applyAiFlag(
+        nullthrows(nativeRef.current),
+        start,
+        end,
+        aiId,
+        status,
+        explanation
+      );
+    },
+    acceptAiMark: (aiId: string) => {
+      Commands.acceptAiMark(nullthrows(nativeRef.current), aiId);
+    },
+    rejectAiMark: (aiId: string, deleteText: boolean) => {
+      Commands.rejectAiMark(nullthrows(nativeRef.current), aiId, deleteText);
+    },
+    claimAiMark: (aiId: string) => {
+      Commands.claimAiMark(nullthrows(nativeRef.current), aiId);
+    },
+    acceptAllAiSuggestions: () => {
+      Commands.acceptAllAiSuggestions(nullthrows(nativeRef.current));
+    },
+    rejectAllAiSuggestions: () => {
+      Commands.rejectAllAiSuggestions(nullthrows(nativeRef.current));
+    },
+    rejectAllAiFlags: () => {
+      Commands.rejectAllAiFlags(nullthrows(nativeRef.current));
+    },
   }));
 
   const handleMentionEvent = (e: NativeSyntheticEvent<OnMentionEvent>) => {
@@ -417,6 +468,7 @@ export const EnrichedTextInput = ({
       onMention={handleMentionEvent}
       onChangeSelection={onChangeSelection}
       onTableCellTap={onTableCellTap}
+      onAiMarkTap={onAiMarkTap}
       onRequestHtmlResult={handleRequestHtmlResult}
       onInputKeyPress={onKeyPress}
       contextMenuItems={nativeContextMenuItems}

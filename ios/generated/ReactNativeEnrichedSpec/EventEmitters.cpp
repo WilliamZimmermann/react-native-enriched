@@ -264,6 +264,22 @@ payload.setProperty(runtime, "colFractions", event.colFractions);
 }
 
 
+void EnrichedTextInputViewEventEmitter::onAiMarkTap(OnAiMarkTap event) const {
+  dispatchEvent("aiMarkTap", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "kind", event.kind);
+payload.setProperty(runtime, "aiId", event.aiId);
+payload.setProperty(runtime, "status", event.status);
+payload.setProperty(runtime, "explanation", event.explanation);
+payload.setProperty(runtime, "rectX", event.rectX);
+payload.setProperty(runtime, "rectY", event.rectY);
+payload.setProperty(runtime, "rectWidth", event.rectWidth);
+payload.setProperty(runtime, "rectHeight", event.rectHeight);
+    return payload;
+  });
+}
+
+
 void EnrichedTextInputViewEventEmitter::onRequestHtmlResult(OnRequestHtmlResult event) const {
   dispatchEvent("requestHtmlResult", [event=std::move(event)](jsi::Runtime &runtime) {
     auto payload = jsi::Object(runtime);

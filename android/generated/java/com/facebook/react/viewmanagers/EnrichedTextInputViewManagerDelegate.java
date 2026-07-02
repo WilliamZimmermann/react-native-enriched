@@ -243,6 +243,30 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "clearColors":
         mViewManager.clearColors(view, args.getInt(0), args.getInt(1));
         break;
+      case "applyAiSuggestion":
+        mViewManager.applyAiSuggestion(view, args.getInt(0), args.getInt(1), args.getString(2), args.getString(3), args.getString(4));
+        break;
+      case "applyAiFlag":
+        mViewManager.applyAiFlag(view, args.getInt(0), args.getInt(1), args.getString(2), args.getString(3), args.getString(4));
+        break;
+      case "acceptAiMark":
+        mViewManager.acceptAiMark(view, args.getString(0));
+        break;
+      case "rejectAiMark":
+        mViewManager.rejectAiMark(view, args.getString(0), args.getBoolean(1));
+        break;
+      case "claimAiMark":
+        mViewManager.claimAiMark(view, args.getString(0));
+        break;
+      case "acceptAllAiSuggestions":
+        mViewManager.acceptAllAiSuggestions(view);
+        break;
+      case "rejectAllAiSuggestions":
+        mViewManager.rejectAllAiSuggestions(view);
+        break;
+      case "rejectAllAiFlags":
+        mViewManager.rejectAllAiFlags(view);
+        break;
     }
   }
 }

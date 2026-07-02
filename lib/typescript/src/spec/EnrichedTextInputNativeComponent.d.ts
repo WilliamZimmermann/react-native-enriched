@@ -158,6 +158,16 @@ export interface OnTableCellTapEvent {
     height: Float;
     colFractions: string;
 }
+export interface OnAiMarkTapEvent {
+    kind: string;
+    aiId: string;
+    status: string;
+    explanation: string;
+    rectX: Float;
+    rectY: Float;
+    rectWidth: Float;
+    rectHeight: Float;
+}
 export interface OnRequestHtmlResultEvent {
     requestId: Int32;
     html: UnsafeMixed;
@@ -382,6 +392,7 @@ export interface NativeProps extends ViewProps {
     onMention?: DirectEventHandler<OnMentionEvent>;
     onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
     onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
+    onAiMarkTap?: DirectEventHandler<OnAiMarkTapEvent>;
     onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
     onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
     onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;
@@ -441,6 +452,14 @@ interface NativeCommands {
     removeHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearFormatting: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearColors: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    applyAiSuggestion: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, aiId: string, status: string, model: string) => void;
+    applyAiFlag: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, aiId: string, status: string, explanation: string) => void;
+    acceptAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string) => void;
+    rejectAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string, deleteText: boolean) => void;
+    claimAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string) => void;
+    acceptAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+    rejectAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+    rejectAllAiFlags: (viewRef: React.ElementRef<ComponentType>) => void;
 }
 export declare const Commands: NativeCommands;
 declare const _default: HostComponent<NativeProps>;
