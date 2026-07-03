@@ -21,6 +21,8 @@ import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan;
 import com.swmansion.enriched.common.spans.EnrichedImageSpan;
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan;
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan;
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan;
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan;
 import com.swmansion.enriched.common.spans.EnrichedLinkSpan;
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
@@ -343,6 +345,26 @@ public class EnrichedParser {
 
           out.append(">");
         }
+        if (style[j] instanceof EnrichedAiSuggestionSpan) {
+          EnrichedAiSuggestionSpan ai = (EnrichedAiSuggestionSpan) style[j];
+          out.append("<span data-ai-suggestion=\"");
+          out.append(escapeHtml(ai.getStatus()));
+          out.append("\" data-ai-id=\"");
+          out.append(escapeHtml(ai.getAiId()));
+          out.append("\" data-ai-model=\"");
+          out.append(escapeHtml(ai.getModel()));
+          out.append("\">");
+        }
+        if (style[j] instanceof EnrichedAiFlagSpan) {
+          EnrichedAiFlagSpan ai = (EnrichedAiFlagSpan) style[j];
+          out.append("<span data-ai-flag=\"");
+          out.append(escapeHtml(ai.getStatus()));
+          out.append("\" data-ai-id=\"");
+          out.append(escapeHtml(ai.getAiId()));
+          out.append("\" data-ai-explanation=\"");
+          out.append(escapeHtml(ai.getExplanation()));
+          out.append("\">");
+        }
         if (style[j] instanceof EnrichedImageSpan) {
           out.append("<img src=\"");
           out.append(((EnrichedImageSpan) style[j]).getSource());
@@ -376,6 +398,10 @@ public class EnrichedParser {
         }
         if (style[j] instanceof EnrichedMentionSpan) {
           out.append("</mention>");
+        }
+        if (style[j] instanceof EnrichedAiSuggestionSpan
+            || style[j] instanceof EnrichedAiFlagSpan) {
+          out.append("</span>");
         }
         if (style[j] instanceof EnrichedStrikeThroughSpan) {
           out.append("</s>");
@@ -612,6 +638,8 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       start(mSpannableStringBuilder, new Code());
     } else if (tag.equalsIgnoreCase("mention")) {
       startMention(mSpannableStringBuilder, attributes);
+    } else if (tag.equalsIgnoreCase("span")) {
+      startSpan(mSpannableStringBuilder, attributes);
     }
   }
 
@@ -661,6 +689,8 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       end(mSpannableStringBuilder, Code.class, mSpanFactory.createInlineCodeSpan(mStyle));
     } else if (tag.equalsIgnoreCase("mention")) {
       endMention(mSpannableStringBuilder, mStyle, mSpanFactory);
+    } else if (tag.equalsIgnoreCase("span")) {
+      endSpan(mSpannableStringBuilder, mStyle, mSpanFactory);
     }
   }
 
@@ -948,6 +978,37 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
         text, m, spanFactory.createMentionSpan(m.mText, m.mIndicator, m.mAttributes, style));
   }
 
+  // AI track-changes marks: <span data-ai-suggestion|flag ...>. A plain <span>
+  // with no data-ai-* attributes pushes no marker, so endSpan no-ops for it.
+  private static void startSpan(Editable text, Attributes attributes) {
+    String suggestion = attributes.getValue("", "data-ai-suggestion");
+    String flag = attributes.getValue("", "data-ai-flag");
+    String aiId = attributes.getValue("", "data-ai-id");
+    if (suggestion != null) {
+      String model = attributes.getValue("", "data-ai-model");
+      start(text, new AiSuggestion(aiId == null ? "" : aiId, suggestion, model == null ? "" : model));
+    } else if (flag != null) {
+      String explanation = attributes.getValue("", "data-ai-explanation");
+      start(
+          text,
+          new AiFlag(aiId == null ? "" : aiId, flag, explanation == null ? "" : explanation));
+    }
+  }
+
+  private static <T> void endSpan(Editable text, T style, EnrichedSpanFactory<T> spanFactory) {
+    AiSuggestion s = getLast(text, AiSuggestion.class);
+    if (s != null) {
+      setSpanFromMark(
+          text, s, spanFactory.createAiSuggestionSpan(s.mAiId, s.mStatus, s.mModel, style));
+      return;
+    }
+    AiFlag f = getLast(text, AiFlag.class);
+    if (f != null) {
+      setSpanFromMark(
+          text, f, spanFactory.createAiFlagSpan(f.mAiId, f.mStatus, f.mExplanation, style));
+    }
+  }
+
   public void setDocumentLocator(Locator locator) {}
 
   public void startDocument() {}
@@ -1064,6 +1125,30 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
 
     public Href(String href) {
       mHref = href;
+    }
+  }
+
+  private static class AiSuggestion {
+    public String mAiId;
+    public String mStatus;
+    public String mModel;
+
+    public AiSuggestion(String aiId, String status, String model) {
+      mAiId = aiId;
+      mStatus = status;
+      mModel = model;
+    }
+  }
+
+  private static class AiFlag {
+    public String mAiId;
+    public String mStatus;
+    public String mExplanation;
+
+    public AiFlag(String aiId, String status, String explanation) {
+      mAiId = aiId;
+      mStatus = status;
+      mExplanation = explanation;
     }
   }
 
