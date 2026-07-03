@@ -143,6 +143,9 @@
 @interface AiMarkStyle : StyleBase
 // 'suggestion' | 'flag' — used by the tap handler to label the emitted event.
 - (NSString *)aiKind;
+// Strip the underline/background this mark paints, so accept/claim/reject don't
+// leave a stale highlight behind.
+- (void)clearVisualInRange:(NSRange)range;
 // Payload at a location (nil when the location carries no mark of this kind).
 - (AiMarkParams *)paramsAt:(NSUInteger)location;
 // Apply the mark (with payload) over an explicit range (the enrich apply

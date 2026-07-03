@@ -126,9 +126,25 @@ static UIColor *AiFlagColor(void) {
                                          range:range];
 }
 
-// Subclass hook: paint the pending/accepted visual for the payload.
+// Subclass hook: paint the pending/accepted visual for the payload. Each
+// override MUST first call clearVisualInRange: so a status change (pending →
+// accepted) never leaves the previous state's underline/tint behind.
 - (void)applyVisualForParams:(AiMarkParams *)params range:(NSRange)range {
   // overridden
+}
+
+// Strip every visual attribute this mark paints (underline + background). The
+// dirty-range cycle does NOT clear these raw attributes on its own, so accept /
+// claim / reject must clear them explicitly, otherwise the green (pending) or
+// blue (accepted) highlight lingers after the state changes.
+- (void)clearVisualInRange:(NSRange)range {
+  if (range.length == 0) {
+    return;
+  }
+  NSTextStorage *ts = self.host.textView.textStorage;
+  [ts removeAttribute:NSUnderlineStyleAttributeName range:range];
+  [ts removeAttribute:NSUnderlineColorAttributeName range:range];
+  [ts removeAttribute:NSBackgroundColorAttributeName range:range];
 }
 
 // MARK: - attribute helpers
@@ -187,6 +203,7 @@ static UIColor *AiFlagColor(void) {
     return;
   }
   [self applyMeta:params range:range];
+  [self applyVisualForParams:params range:range];
   [self.host.attributesManager addDirtyRange:range];
 }
 
@@ -201,6 +218,9 @@ static UIColor *AiFlagColor(void) {
     [self.host.textView.textStorage addAttribute:[self getKey]
                                            value:p
                                            range:range];
+    // Re-derive the visual immediately (blue) — the dirty cycle alone leaves
+    // the previous pending green behind.
+    [self applyVisualForParams:p range:range];
     [self.host.attributesManager addDirtyRange:range];
   }
 }
@@ -209,6 +229,8 @@ static UIColor *AiFlagColor(void) {
   for (NSValue *rv in [self rangesForId:aiId]) {
     NSRange range = [rv rangeValue];
     [self.host.textView.textStorage removeAttribute:[self getKey] range:range];
+    // Claimed / removed: no mark → no highlight at all.
+    [self clearVisualInRange:range];
     [self.host.attributesManager addDirtyRange:range];
   }
 }
@@ -235,6 +257,7 @@ static UIColor *AiFlagColor(void) {
     [self.host.textView.textStorage addAttribute:[self getKey]
                                            value:p
                                            range:range];
+    [self applyVisualForParams:p range:range];
     [self.host.attributesManager addDirtyRange:range];
   }
 }
@@ -275,6 +298,7 @@ static UIColor *AiFlagColor(void) {
       NSRange range = [pair.rangeValue rangeValue];
       [self.host.textView.textStorage removeAttribute:[self getKey]
                                                 range:range];
+      [self clearVisualInRange:range];
       [self.host.attributesManager addDirtyRange:range];
     }
   }
@@ -297,11 +321,13 @@ static UIColor *AiFlagColor(void) {
 }
 
 - (void)applyVisualForParams:(AiMarkParams *)params range:(NSRange)range {
+  // Always start from a clean slate so pending↔accepted transitions don't
+  // stack (e.g. the pending green dashed underline surviving under the blue).
+  [self clearVisualInRange:range];
   if ([params.status isEqualToString:@"accepted"]) {
-    // Accepted but not yet claimed: a BLUE highlight (matches the web editor)
-    // that stays until the user claims the text as their own — claiming strips
-    // the mark entirely, so the highlight disappears and it becomes plain user
-    // text. No underline in this state.
+    // Accepted but not yet claimed: a BLUE highlight (matches the web editor),
+    // no underline. Claiming strips the mark → clearVisualInRange leaves plain
+    // user text with no highlight.
     [self.host.textView.textStorage
         addAttributes:@{NSBackgroundColorAttributeName : AiAcceptedTint()}
                 range:range];
@@ -334,16 +360,19 @@ static UIColor *AiFlagColor(void) {
 }
 
 - (void)applyVisualForParams:(AiMarkParams *)params range:(NSRange)range {
-  // The faithful wavy stroke is custom-drawn by LayoutManagerExtension (Task
-  // 11) reading the EnrichedAiFlag attribute; this dotted system underline is a
-  // visible fallback that also reserves the underline colour.
-  UIColor *color = AiFlagColor();
-  NSDictionary *attrs = @{
-    NSUnderlineColorAttributeName : color,
+  [self clearVisualInRange:range];
+  // Accepted ("Keep") flag: the user reviewed and kept their text — no visual.
+  if ([params.status isEqualToString:@"accepted"]) {
+    return;
+  }
+  // Pending: dotted red underline. (The faithful wavy stroke is a later
+  // LayoutManagerExtension task; this system underline is the fallback.)
+  [self.host.textView.textStorage addAttributes:@{
+    NSUnderlineColorAttributeName : AiFlagColor(),
     NSUnderlineStyleAttributeName :
         @(NSUnderlineStyleSingle | NSUnderlinePatternDot),
-  };
-  [self.host.textView.textStorage addAttributes:attrs range:range];
+  }
+                                          range:range];
 }
 
 @end
