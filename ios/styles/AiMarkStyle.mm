@@ -44,6 +44,17 @@ static UIColor *AiSuggestionTint(void) {
                                          blue:0.541
                                         alpha:0.16]);
 }
+// Accepted suggestion = blue highlight (matches the web editor) until claimed.
+static UIColor *AiAcceptedTint(void) {
+  return AiDynamicColor([UIColor colorWithRed:0.231
+                                        green:0.510
+                                         blue:0.965
+                                        alpha:0.18],
+                        [UIColor colorWithRed:0.376
+                                        green:0.596
+                                         blue:1.000
+                                        alpha:0.24]);
+}
 // Flag = amber/red (matches the web editor's correction styling).
 static UIColor *AiFlagColor(void) {
   return AiDynamicColor([UIColor colorWithRed:0.882
@@ -286,18 +297,24 @@ static UIColor *AiFlagColor(void) {
 }
 
 - (void)applyVisualForParams:(AiMarkParams *)params range:(NSRange)range {
-  BOOL accepted = [params.status isEqualToString:@"accepted"];
-  UIColor *color = AiSuggestionColor();
-  NSMutableDictionary *attrs = [@{
-    NSUnderlineColorAttributeName : color,
-    NSUnderlineStyleAttributeName :
-        @(accepted ? NSUnderlineStyleSingle
-                   : (NSUnderlineStyleSingle | NSUnderlinePatternDash)),
-  } mutableCopy];
-  if (!accepted) {
-    attrs[NSBackgroundColorAttributeName] = AiSuggestionTint();
+  if ([params.status isEqualToString:@"accepted"]) {
+    // Accepted but not yet claimed: a BLUE highlight (matches the web editor)
+    // that stays until the user claims the text as their own — claiming strips
+    // the mark entirely, so the highlight disappears and it becomes plain user
+    // text. No underline in this state.
+    [self.host.textView.textStorage
+        addAttributes:@{NSBackgroundColorAttributeName : AiAcceptedTint()}
+                range:range];
+    return;
   }
-  [self.host.textView.textStorage addAttributes:attrs range:range];
+  // Pending: green dashed underline + green tint.
+  [self.host.textView.textStorage addAttributes:@{
+    NSUnderlineColorAttributeName : AiSuggestionColor(),
+    NSUnderlineStyleAttributeName :
+        @(NSUnderlineStyleSingle | NSUnderlinePatternDash),
+    NSBackgroundColorAttributeName : AiSuggestionTint(),
+  }
+                                          range:range];
 }
 
 @end
