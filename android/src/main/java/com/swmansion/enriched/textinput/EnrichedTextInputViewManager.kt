@@ -16,6 +16,7 @@ import com.facebook.react.viewmanagers.EnrichedTextInputViewManagerDelegate
 import com.facebook.react.viewmanagers.EnrichedTextInputViewManagerInterface
 import com.facebook.yoga.YogaMeasureMode
 import com.swmansion.enriched.textinput.events.OnChangeHtmlEvent
+import com.swmansion.enriched.textinput.events.OnAiMarkTapEvent
 import com.swmansion.enriched.textinput.events.OnChangeSelectionEvent
 import com.swmansion.enriched.textinput.events.OnChangeStateEvent
 import com.swmansion.enriched.textinput.events.OnChangeTextEvent
@@ -71,6 +72,7 @@ class EnrichedTextInputViewManager :
     map.put(OnMentionDetectedEvent.EVENT_NAME, mapOf("registrationName" to OnMentionDetectedEvent.EVENT_NAME))
     map.put(OnMentionEvent.EVENT_NAME, mapOf("registrationName" to OnMentionEvent.EVENT_NAME))
     map.put(OnChangeSelectionEvent.EVENT_NAME, mapOf("registrationName" to OnChangeSelectionEvent.EVENT_NAME))
+    map.put(OnAiMarkTapEvent.EVENT_NAME, mapOf("registrationName" to OnAiMarkTapEvent.EVENT_NAME))
     map.put(OnRequestHtmlResultEvent.EVENT_NAME, mapOf("registrationName" to OnRequestHtmlResultEvent.EVENT_NAME))
     map.put(OnInputKeyPressEvent.EVENT_NAME, mapOf("registrationName" to OnInputKeyPressEvent.EVENT_NAME))
     map.put(OnPasteImagesEvent.EVENT_NAME, mapOf("registrationName" to OnPasteImagesEvent.EVENT_NAME))

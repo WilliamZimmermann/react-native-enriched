@@ -6,9 +6,12 @@ import com.facebook.react.bridge.ReactContext
 import com.facebook.react.uimanager.UIManagerHelper
 import com.swmansion.enriched.common.EnrichedConstants
 import com.swmansion.enriched.textinput.EnrichedTextInputView
+import com.swmansion.enriched.textinput.events.OnAiMarkTapEvent
 import com.swmansion.enriched.textinput.events.OnChangeSelectionEvent
 import com.swmansion.enriched.textinput.events.OnLinkDetectedEvent
 import com.swmansion.enriched.textinput.events.OnMentionDetectedEvent
+import com.swmansion.enriched.textinput.spans.EnrichedInputAiFlagSpan
+import com.swmansion.enriched.textinput.spans.EnrichedInputAiSuggestionSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputLinkSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputMentionSpan
 import com.swmansion.enriched.textinput.spans.EnrichedSpans
@@ -56,6 +59,89 @@ class EnrichedSelection(
     end = finalEnd
     validateStyles()
     emitSelectionChangeEvent(view.text, finalStart, finalEnd)
+    maybeEmitAiMarkTap(finalStart)
+  }
+
+  // aiId of the mark the caret currently sits inside, so onAiMarkTap fires once
+  // on entry rather than on every selection change (mirrors iOS lastAiMarkId).
+  private var lastAiMarkId: String? = null
+
+  private fun maybeEmitAiMarkTap(caret: Int) {
+    val spannable = view.text as? Spannable
+    val len = spannable?.length ?: 0
+    var kind: String? = null
+    var aiId = ""
+    var status = "pending"
+    var explanation = ""
+    var spanStart = -1
+    var spanEnd = -1
+
+    if (spannable != null && len > 0 && caret < len) {
+      val sug = spannable.getSpans(caret, caret + 1, EnrichedInputAiSuggestionSpan::class.java)
+      if (sug.isNotEmpty()) {
+        kind = "suggestion"
+        aiId = sug[0].getAiId()
+        status = sug[0].getStatus()
+        spanStart = spannable.getSpanStart(sug[0])
+        spanEnd = spannable.getSpanEnd(sug[0])
+      } else {
+        val flg = spannable.getSpans(caret, caret + 1, EnrichedInputAiFlagSpan::class.java)
+        if (flg.isNotEmpty()) {
+          kind = "flag"
+          aiId = flg[0].getAiId()
+          status = flg[0].getStatus()
+          explanation = flg[0].getExplanation()
+          spanStart = spannable.getSpanStart(flg[0])
+          spanEnd = spannable.getSpanEnd(flg[0])
+        }
+      }
+    }
+
+    val currentId = if (kind != null) aiId else null
+    if (currentId != null && currentId != lastAiMarkId) {
+      val rect = computeSpanRect(spanStart, spanEnd)
+      val context = view.context as ReactContext
+      val surfaceId = UIManagerHelper.getSurfaceId(context)
+      val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(context, view.id)
+      dispatcher?.dispatchEvent(
+        OnAiMarkTapEvent(
+          surfaceId,
+          view.id,
+          kind!!,
+          aiId,
+          status,
+          explanation,
+          rect[0],
+          rect[1],
+          rect[2],
+          rect[3],
+        ),
+      )
+    }
+    lastAiMarkId = currentId
+  }
+
+  // Best-effort on-screen rect (dp) of the mark for popover anchoring.
+  private fun computeSpanRect(
+    spanStart: Int,
+    spanEnd: Int,
+  ): FloatArray {
+    val layout = view.layout ?: return floatArrayOf(0f, 0f, 0f, 0f)
+    if (spanStart < 0) return floatArrayOf(0f, 0f, 0f, 0f)
+    val density = view.resources.displayMetrics.density
+    val line = layout.getLineForOffset(spanStart)
+    val startX = layout.getPrimaryHorizontal(spanStart)
+    val endX =
+      if (layout.getLineForOffset(spanEnd) == line) {
+        layout.getPrimaryHorizontal(spanEnd)
+      } else {
+        layout.getLineRight(line)
+      }
+    val top = layout.getLineTop(line).toFloat()
+    val bottom = layout.getLineBottom(line).toFloat()
+    val x = startX + view.totalPaddingLeft - view.scrollX
+    val y = top + view.totalPaddingTop - view.scrollY
+    return floatArrayOf(x / density, y / density, (endX - startX) / density, (bottom - top) / density)
   }
 
   private fun isZeroWidthSelection(
