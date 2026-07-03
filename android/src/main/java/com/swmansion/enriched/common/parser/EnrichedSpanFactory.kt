@@ -1,5 +1,7 @@
 package com.swmansion.enriched.common.parser
 
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan
 import com.swmansion.enriched.common.spans.EnrichedAlignmentSpan
 import com.swmansion.enriched.common.spans.EnrichedBlockQuoteSpan
 import com.swmansion.enriched.common.spans.EnrichedBoldSpan
@@ -46,6 +48,20 @@ interface EnrichedSpanFactory<T> {
     attributes: Map<String, String>,
     style: T,
   ): EnrichedMentionSpan
+
+  fun createAiSuggestionSpan(
+    aiId: String,
+    status: String,
+    model: String,
+    style: T,
+  ): EnrichedAiSuggestionSpan
+
+  fun createAiFlagSpan(
+    aiId: String,
+    status: String,
+    explanation: String,
+    style: T,
+  ): EnrichedAiFlagSpan
 
   fun createImageSpan(
     source: String,

@@ -1,6 +1,8 @@
 package com.swmansion.enriched.text
 
 import com.swmansion.enriched.common.parser.EnrichedSpanFactory
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan
 import com.swmansion.enriched.text.spans.EnrichedTextAlignmentSpan
 import com.swmansion.enriched.text.spans.EnrichedTextBlockQuoteSpan
 import com.swmansion.enriched.text.spans.EnrichedTextBoldSpan
@@ -47,6 +49,22 @@ class EnrichedTextSpanFactory : EnrichedSpanFactory<EnrichedTextStyle> {
     attributes: Map<String, String>,
     style: EnrichedTextStyle,
   ) = EnrichedTextMentionSpan(text, indicator, attributes, style)
+
+  // The read-only viewer renders AI marks with the shared base spans (they're
+  // not interactive there).
+  override fun createAiSuggestionSpan(
+    aiId: String,
+    status: String,
+    model: String,
+    style: EnrichedTextStyle,
+  ) = EnrichedAiSuggestionSpan(aiId, status, model)
+
+  override fun createAiFlagSpan(
+    aiId: String,
+    status: String,
+    explanation: String,
+    style: EnrichedTextStyle,
+  ) = EnrichedAiFlagSpan(aiId, status, explanation)
 
   override fun createImageSpan(
     source: String,
