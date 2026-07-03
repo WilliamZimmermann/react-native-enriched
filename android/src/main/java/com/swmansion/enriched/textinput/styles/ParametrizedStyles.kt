@@ -6,6 +6,8 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import com.swmansion.enriched.common.EnrichedConstants
 import com.swmansion.enriched.textinput.EnrichedTextInputView
+import com.swmansion.enriched.textinput.spans.EnrichedInputAiFlagSpan
+import com.swmansion.enriched.textinput.spans.EnrichedInputAiSuggestionSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputHorizontalRuleSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputLinkSpan
@@ -82,6 +84,152 @@ class ParametrizedStyles(
     val spans = spannable.getSpans(clampedStart, clampedEnd, EnrichedInputLinkSpan::class.java)
     for (span in spans) {
       spannable.removeSpan(span)
+    }
+    view.selection?.validateStyles()
+  }
+
+  // MARK: - AI track-changes marks
+
+  fun setAiSuggestionSpan(
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    model: String,
+  ) {
+    val spannable = view.text as SpannableStringBuilder
+    val (safeStart, safeEnd) = spannable.getSafeSpanBoundaries(start, end)
+    if (safeStart >= safeEnd) return
+    for (span in spannable.getSpans(safeStart, safeEnd, EnrichedInputAiSuggestionSpan::class.java)) {
+      spannable.removeSpan(span)
+    }
+    spannable.setSpan(
+      EnrichedInputAiSuggestionSpan(aiId, status, model, view.htmlStyle),
+      safeStart,
+      safeEnd,
+      Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+    )
+    view.selection?.validateStyles()
+  }
+
+  fun setAiFlagSpan(
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    explanation: String,
+  ) {
+    val spannable = view.text as SpannableStringBuilder
+    val (safeStart, safeEnd) = spannable.getSafeSpanBoundaries(start, end)
+    if (safeStart >= safeEnd) return
+    for (span in spannable.getSpans(safeStart, safeEnd, EnrichedInputAiFlagSpan::class.java)) {
+      spannable.removeSpan(span)
+    }
+    spannable.setSpan(
+      EnrichedInputAiFlagSpan(aiId, status, explanation, view.htmlStyle),
+      safeStart,
+      safeEnd,
+      Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+    )
+    view.selection?.validateStyles()
+  }
+
+  // Accept: flip a mark's status to "accepted" (keep text + mark). aiIds are
+  // unique across kinds, so applying to both is safe.
+  fun acceptAiMark(aiId: String) {
+    val spannable = view.text as SpannableStringBuilder
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiSuggestionSpan::class.java)) {
+      if (span.getAiId() != aiId) continue
+      val s = spannable.getSpanStart(span)
+      val e = spannable.getSpanEnd(span)
+      spannable.removeSpan(span)
+      spannable.setSpan(
+        EnrichedInputAiSuggestionSpan(aiId, "accepted", span.getModel(), view.htmlStyle),
+        s,
+        e,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+      )
+    }
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiFlagSpan::class.java)) {
+      if (span.getAiId() != aiId) continue
+      val s = spannable.getSpanStart(span)
+      val e = spannable.getSpanEnd(span)
+      spannable.removeSpan(span)
+      spannable.setSpan(
+        EnrichedInputAiFlagSpan(aiId, "accepted", span.getExplanation(), view.htmlStyle),
+        s,
+        e,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+      )
+    }
+    view.selection?.validateStyles()
+  }
+
+  // Reject: deleteText=true (gap-fill suggestion) removes the inserted text;
+  // false (flag) strips the mark and keeps the student's text.
+  fun rejectAiMark(
+    aiId: String,
+    deleteText: Boolean,
+  ) {
+    val spannable = view.text as SpannableStringBuilder
+    val matches = ArrayList<Any>()
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiSuggestionSpan::class.java)) {
+      if (span.getAiId() == aiId) matches.add(span)
+    }
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiFlagSpan::class.java)) {
+      if (span.getAiId() == aiId) matches.add(span)
+    }
+    // Delete from the end backwards so earlier ranges stay valid.
+    matches.sortByDescending { spannable.getSpanStart(it) }
+    for (span in matches) {
+      val s = spannable.getSpanStart(span)
+      val e = spannable.getSpanEnd(span)
+      spannable.removeSpan(span)
+      if (deleteText && e > s) spannable.delete(s, e)
+    }
+    view.selection?.validateStyles()
+  }
+
+  // Claim: strip a suggestion's mark, keeping the text as the student's own.
+  fun claimAiMark(aiId: String) = rejectAiMark(aiId, false)
+
+  fun acceptAllAiSuggestions() {
+    val spannable = view.text as SpannableStringBuilder
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiSuggestionSpan::class.java)) {
+      if (span.getStatus() == "accepted") continue
+      val s = spannable.getSpanStart(span)
+      val e = spannable.getSpanEnd(span)
+      spannable.removeSpan(span)
+      spannable.setSpan(
+        EnrichedInputAiSuggestionSpan(span.getAiId(), "accepted", span.getModel(), view.htmlStyle),
+        s,
+        e,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+      )
+    }
+    view.selection?.validateStyles()
+  }
+
+  fun rejectAllAiSuggestions() {
+    val spannable = view.text as SpannableStringBuilder
+    val pending = ArrayList<EnrichedInputAiSuggestionSpan>()
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiSuggestionSpan::class.java)) {
+      if (span.getStatus() != "accepted") pending.add(span)
+    }
+    pending.sortByDescending { spannable.getSpanStart(it) }
+    for (span in pending) {
+      val s = spannable.getSpanStart(span)
+      val e = spannable.getSpanEnd(span)
+      spannable.removeSpan(span)
+      if (e > s) spannable.delete(s, e)
+    }
+    view.selection?.validateStyles()
+  }
+
+  fun rejectAllAiFlags() {
+    val spannable = view.text as SpannableStringBuilder
+    for (span in spannable.getSpans(0, spannable.length, EnrichedInputAiFlagSpan::class.java)) {
+      if (span.getStatus() != "accepted") spannable.removeSpan(span)
     }
     view.selection?.validateStyles()
   }

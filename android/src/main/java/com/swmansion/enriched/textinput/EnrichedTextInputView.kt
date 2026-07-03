@@ -1031,6 +1031,68 @@ class EnrichedTextInputView :
     parametrizedStyles?.setMentionSpan(text, indicator, attributes)
   }
 
+  // AI track-changes marks. Applied over an explicit range (no verifyStyle —
+  // they're programmatic overlays that conflict with nothing); review actions
+  // are keyed by aiId.
+  fun applyAiSuggestion(
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    model: String,
+  ) {
+    parametrizedStyles?.setAiSuggestionSpan(
+      getActualIndex(start),
+      getActualIndex(end),
+      aiId,
+      status,
+      model,
+    )
+  }
+
+  fun applyAiFlag(
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    explanation: String,
+  ) {
+    parametrizedStyles?.setAiFlagSpan(
+      getActualIndex(start),
+      getActualIndex(end),
+      aiId,
+      status,
+      explanation,
+    )
+  }
+
+  fun acceptAiMark(aiId: String) {
+    parametrizedStyles?.acceptAiMark(aiId)
+  }
+
+  fun rejectAiMark(
+    aiId: String,
+    deleteText: Boolean,
+  ) {
+    parametrizedStyles?.rejectAiMark(aiId, deleteText)
+  }
+
+  fun claimAiMark(aiId: String) {
+    parametrizedStyles?.claimAiMark(aiId)
+  }
+
+  fun acceptAllAiSuggestions() {
+    parametrizedStyles?.acceptAllAiSuggestions()
+  }
+
+  fun rejectAllAiSuggestions() {
+    parametrizedStyles?.rejectAllAiSuggestions()
+  }
+
+  fun rejectAllAiFlags() {
+    parametrizedStyles?.rejectAllAiFlags()
+  }
+
   fun setTextAlignment(alignment: String) {
     runAsATransaction {
       alignmentStyles?.setAlignment(alignment)

@@ -483,6 +483,62 @@ class EnrichedTextInputViewManager :
     view?.addMention(text, indicator, attributes)
   }
 
+  override fun applyAiSuggestion(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    model: String,
+  ) {
+    view?.applyAiSuggestion(start, end, aiId, status, model)
+  }
+
+  override fun applyAiFlag(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    explanation: String,
+  ) {
+    view?.applyAiFlag(start, end, aiId, status, explanation)
+  }
+
+  override fun acceptAiMark(
+    view: EnrichedTextInputView?,
+    aiId: String,
+  ) {
+    view?.acceptAiMark(aiId)
+  }
+
+  override fun rejectAiMark(
+    view: EnrichedTextInputView?,
+    aiId: String,
+    deleteText: Boolean,
+  ) {
+    view?.rejectAiMark(aiId, deleteText)
+  }
+
+  override fun claimAiMark(
+    view: EnrichedTextInputView?,
+    aiId: String,
+  ) {
+    view?.claimAiMark(aiId)
+  }
+
+  override fun acceptAllAiSuggestions(view: EnrichedTextInputView?) {
+    view?.acceptAllAiSuggestions()
+  }
+
+  override fun rejectAllAiSuggestions(view: EnrichedTextInputView?) {
+    view?.rejectAllAiSuggestions()
+  }
+
+  override fun rejectAllAiFlags(view: EnrichedTextInputView?) {
+    view?.rejectAllAiFlags()
+  }
+
   override fun requestHTML(
     view: EnrichedTextInputView?,
     requestId: Int,
