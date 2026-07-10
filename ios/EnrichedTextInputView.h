@@ -46,6 +46,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)emitOnPasteImagesEvent:(NSArray<NSDictionary *> *)images;
 - (void)anyTextMayHaveBeenModified;
 - (void)scheduleRelayoutIfNeeded;
+// Hardware-keyboard formatting shortcuts (Cmd-B / Cmd-I / Cmd-U). Route to the
+// same toggleRegularStyle: path as the JS commands and the toolbar buttons, so
+// the change is tracked by the enriched attribute system and emitted to JS.
+- (void)katavToggleBold;
+- (void)katavToggleItalic;
+- (void)katavToggleUnderline;
 
 @end
 

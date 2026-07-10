@@ -1612,6 +1612,21 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
 
 // MARK: - Styles manipulation
 
+// Hardware-keyboard shortcuts, invoked from EnrichedInputTextView's
+// UIKeyCommand handlers. Same path as the JS toggleBold/Italic/Underline
+// commands.
+- (void)katavToggleBold {
+  [self toggleRegularStyle:[BoldStyle getType]];
+}
+
+- (void)katavToggleItalic {
+  [self toggleRegularStyle:[ItalicStyle getType]];
+}
+
+- (void)katavToggleUnderline {
+  [self toggleRegularStyle:[UnderlineStyle getType]];
+}
+
 - (void)toggleRegularStyle:(StyleType)type {
   StyleBase *style = stylesDict[@(type)];
   NSRange range = textView.selectedRange;
