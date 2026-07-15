@@ -504,6 +504,13 @@ class EnrichedTextInputViewManager :
     view?.setTextAlignment(alignment)
   }
 
+  override fun setTextDirection(
+    view: EnrichedTextInputView?,
+    direction: String,
+  ) {
+    view?.setTextDirection(direction)
+  }
+
   // ---------------------------------------------------------------------------
   // Selection-toolbar commands/props — currently iOS-only.
   //

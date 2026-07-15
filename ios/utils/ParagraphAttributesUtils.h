@@ -14,5 +14,6 @@
                                          input:(id)input;
 + (BOOL)isParagraphEmpty:(NSRange)range inString:(NSString *)string;
 + (void)resetTypingAttributes:(EnrichedTextInputView *)input
-          preservingAlignment:(NSTextAlignment)alignment;
+          preservingAlignment:(NSTextAlignment)alignment
+                    direction:(NSWritingDirection)direction;
 @end

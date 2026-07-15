@@ -99,6 +99,7 @@ function buildState(
       isBlocking: isFormatBlocked('image', editor, htmlStyle),
     },
     alignment: 'left',
+    direction: 'auto',
   };
 }
 

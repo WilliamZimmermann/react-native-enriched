@@ -1,6 +1,8 @@
 #import "HtmlParser.h"
 #import "AlignmentEntry.h"
 #import "AlignmentUtils.h"
+#import "DirectionEntry.h"
+#import "DirectionUtils.h"
 #import "ImageData.h"
 #import "LinkData.h"
 #import "MentionParams.h"
@@ -707,6 +709,8 @@
   NSMutableDictionary *checkboxStates = [[NSMutableDictionary alloc] init];
   NSMutableArray<AlignmentEntry *> *foundAlignments =
       [[NSMutableArray alloc] init];
+  NSMutableArray<DirectionEntry *> *foundDirections =
+      [[NSMutableArray alloc] init];
   // Entries: @{ @"loc": @(charLocation), @"depth": @(N) } for each <li> with
   // a non-zero data-depth attribute. InputHtmlParser replays them after styles
   // to restore nested list depth across HTML round-trips.
@@ -922,6 +926,10 @@
         [self checkForAlignments:ongoingTags[currentTagName]
                        plainText:plainText
                  foundAlignments:foundAlignments
+             precedingImageCount:precedingImageCount];
+        [self checkForDirections:ongoingTags[currentTagName]
+                       plainText:plainText
+                 foundDirections:foundDirections
              precedingImageCount:precedingImageCount];
         [self finalizeTagEntry:currentTagName
                        ongoingTags:ongoingTags
@@ -1198,7 +1206,10 @@
     [processedStyles addObject:styleArr];
   }
 
-  return @[ plainText, processedStyles, foundAlignments, foundListDepths ];
+  return @[
+    plainText, processedStyles, foundAlignments, foundListDepths,
+    foundDirections
+  ];
 }
 
 + (NSString *)parseToHtmlFromRange:(NSRange)range
@@ -1230,8 +1241,10 @@
     // check each existing style existence
     for (NSNumber *type in host.stylesDict) {
       StyleBase *style = host.stylesDict[type];
-      // we do not want to add <></> tags for alignment
-      if ([style isKindOfClass:[AlignmentStyle class]]) {
+      // we do not want to add <></> tags for alignment or direction — both are
+      // emitted as attributes on the block open tag instead
+      if ([style isKindOfClass:[AlignmentStyle class]] ||
+          [style isKindOfClass:[DirectionStyle class]]) {
         continue;
       }
       if ([style detect:currentRange]) {
@@ -1878,12 +1891,21 @@
                                    atIndex:location
                             effectiveRange:nil];
   NSString *alignStr = [AlignmentUtils cssValueForAlignment:pStyle.alignment];
+  NSString *dirStr =
+      [DirectionUtils htmlValueForDirection:pStyle.baseWritingDirection];
 
+  NSMutableString *attrs = [[NSMutableString alloc] init];
   if (alignStr) {
-    return [NSString stringWithFormat:@" style=\"text-align: %@\"", alignStr];
+    [attrs appendFormat:@" style=\"text-align: %@\"", alignStr];
+  }
+  // The web app persists paragraph writing direction as `dir="rtl"` /
+  // `dir="ltr"` on the block element; nothing is emitted for the natural
+  // (default) direction.
+  if (dirStr) {
+    [attrs appendFormat:@" dir=\"%@\"", dirStr];
   }
 
-  return @"";
+  return attrs;
 }
 
 + (void)checkForAlignments:(NSArray *)tagData
@@ -1910,6 +1932,34 @@
       entry.alignment = align;
       entry.range = NSMakeRange(actualStart, length);
       [foundAlignments addObject:entry];
+    }
+  }
+}
+
++ (void)checkForDirections:(NSArray *)tagData
+                 plainText:(NSString *)plainText
+           foundDirections:(NSMutableArray<DirectionEntry *> *)foundDirections
+       precedingImageCount:(NSInteger)precedingImageCount {
+  if (tagData == nil) {
+    return;
+  }
+
+  // We look at the params stored in ongoingTags
+  NSString *storedParams = (tagData.count > 2) ? tagData[2] : nil;
+  NSWritingDirection direction =
+      [DirectionUtils directionFromStyleParams:storedParams];
+
+  if (direction != NSWritingDirectionNatural) {
+    NSInteger startLoc = [tagData[0] integerValue];
+    // Calculate range relative to plainText
+    NSInteger actualStart = startLoc + precedingImageCount;
+    NSInteger length = plainText.length - startLoc;
+
+    if (length > 0) {
+      DirectionEntry *entry = [[DirectionEntry alloc] init];
+      entry.direction = direction;
+      entry.range = NSMakeRange(actualStart, length);
+      [foundDirections addObject:entry];
     }
   }
 }

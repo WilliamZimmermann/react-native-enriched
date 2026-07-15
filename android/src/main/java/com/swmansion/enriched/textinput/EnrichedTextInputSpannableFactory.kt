@@ -7,6 +7,7 @@ import com.swmansion.enriched.textinput.spans.EnrichedInputBlockQuoteSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputBoldSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputCheckboxListSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputCodeBlockSpan
+import com.swmansion.enriched.textinput.spans.EnrichedInputDirectionSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputH1Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH2Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH3Span
@@ -26,6 +27,8 @@ import com.swmansion.enriched.textinput.styles.HtmlStyle
 
 class EnrichedTextInputSpannableFactory : EnrichedSpanFactory<HtmlStyle> {
   override fun createAlignmentSpan(cssValue: String) = EnrichedInputAlignmentSpan(cssValue)
+
+  override fun createDirectionSpan(cssValue: String) = EnrichedInputDirectionSpan(cssValue)
 
   override fun createBoldSpan(style: HtmlStyle) = EnrichedInputBoldSpan(style)
 

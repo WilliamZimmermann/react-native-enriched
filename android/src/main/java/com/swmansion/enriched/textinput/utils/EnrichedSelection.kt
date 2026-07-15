@@ -107,6 +107,9 @@ class EnrichedSelection(
 
     val currentAlignment = view.alignmentStyles?.getCurrentAlignment() ?: "auto"
     state.setAlignment(currentAlignment)
+
+    val currentDirection = view.directionStyles?.getCurrentDirection() ?: "auto"
+    state.setDirection(currentDirection)
   }
 
   fun getInlineSelection(): Pair<Int, Int> {

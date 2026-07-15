@@ -79,6 +79,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void requestSelectionHTML(T view, int requestId, int start, int end);
   void replaceSelectionWithHtml(T view, int start, int end, String html);
   void setTextAlignment(T view, String alignment);
+  void setTextDirection(T view, String direction);
   void addHighlight(T view, int start, int end, String color);
   void removeHighlight(T view, int start, int end);
   void clearFormatting(T view, int start, int end);

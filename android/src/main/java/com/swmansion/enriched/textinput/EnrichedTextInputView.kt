@@ -22,6 +22,7 @@ import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
@@ -58,6 +59,7 @@ import com.swmansion.enriched.textinput.spans.EnrichedLineHeightSpan
 import com.swmansion.enriched.textinput.spans.EnrichedSpans
 import com.swmansion.enriched.textinput.spans.interfaces.EnrichedInputSpan
 import com.swmansion.enriched.textinput.styles.AlignmentStyles
+import com.swmansion.enriched.textinput.styles.DirectionStyles
 import com.swmansion.enriched.textinput.styles.HtmlStyle
 import com.swmansion.enriched.textinput.styles.InlineStyles
 import com.swmansion.enriched.textinput.styles.ListStyles
@@ -89,6 +91,7 @@ class EnrichedTextInputView :
   val shortcutsHandler: ShortcutsHandler? = ShortcutsHandler(this)
   val parametrizedStyles: ParametrizedStyles? = ParametrizedStyles(this)
   val alignmentStyles: AlignmentStyles? = AlignmentStyles(this)
+  val directionStyles: DirectionStyles? = DirectionStyles(this)
   var isDuringTransaction: Boolean = false
   var isRemovingMany: Boolean = false
   var scrollEnabled: Boolean = true
@@ -999,6 +1002,24 @@ class EnrichedTextInputView :
     runAsATransaction {
       alignmentStyles?.setAlignment(alignment)
     }
+    selection?.validateStyles()
+  }
+
+  fun setTextDirection(direction: String) {
+    // Store the direction as a per-paragraph marker span so it is reported in
+    // state and round-trips through HTML.
+    runAsATransaction {
+      directionStyles?.setDirection(direction)
+    }
+    // Android has no per-paragraph base-direction span, so the explicit ltr/rtl
+    // choice can only be applied to the whole field. "auto" restores the platform
+    // default (first-strong heuristic, i.e. TextDirectionHeuristics.FIRSTSTRONG).
+    textDirection =
+      when (direction) {
+        "ltr" -> View.TEXT_DIRECTION_LTR
+        "rtl" -> View.TEXT_DIRECTION_RTL
+        else -> View.TEXT_DIRECTION_FIRST_STRONG
+      }
     selection?.validateStyles()
   }
 

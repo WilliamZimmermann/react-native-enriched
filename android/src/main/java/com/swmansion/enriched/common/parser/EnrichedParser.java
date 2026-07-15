@@ -11,6 +11,7 @@ import com.swmansion.enriched.common.spans.EnrichedAlignmentSpan;
 import com.swmansion.enriched.common.spans.EnrichedBoldSpan;
 import com.swmansion.enriched.common.spans.EnrichedCheckboxListSpan;
 import com.swmansion.enriched.common.spans.EnrichedCodeBlockSpan;
+import com.swmansion.enriched.common.spans.EnrichedDirectionSpan;
 import com.swmansion.enriched.common.spans.EnrichedH1Span;
 import com.swmansion.enriched.common.spans.EnrichedH2Span;
 import com.swmansion.enriched.common.spans.EnrichedH3Span;
@@ -146,6 +147,15 @@ public class EnrichedParser {
     return " style=\"text-align: " + cssValue + "\"";
   }
 
+  private static String getDirectionAttr(Spanned text, int start, int end) {
+    EnrichedDirectionSpan[] spans = text.getSpans(start, end, EnrichedDirectionSpan.class);
+    if (spans.length == 0) return "";
+    String cssValue = spans[0].getCssValue();
+    // "auto" is the platform default and is emitted as the absence of a dir attribute.
+    if (cssValue.equals("auto")) return "";
+    return " dir=\"" + cssValue + "\"";
+  }
+
   private static String getBlockTag(EnrichedParagraphSpan[] spans) {
     for (EnrichedParagraphSpan span : spans) {
       if (span instanceof EnrichedUnorderedListSpan) {
@@ -223,16 +233,23 @@ public class EnrichedParser {
         if (isUlListItem && !isInUlList) {
           // Current paragraph is the first item in a list
           isInUlList = true;
-          out.append("<ul").append(getAlignmentStyleAttr(text, i, next)).append(">\n");
+          out.append("<ul")
+              .append(getAlignmentStyleAttr(text, i, next))
+              .append(getDirectionAttr(text, i, next))
+              .append(">\n");
         } else if (isOlListItem && !isInOlList) {
           // Current paragraph is the first item in a list
           isInOlList = true;
-          out.append("<ol").append(getAlignmentStyleAttr(text, i, next)).append(">\n");
+          out.append("<ol")
+              .append(getAlignmentStyleAttr(text, i, next))
+              .append(getDirectionAttr(text, i, next))
+              .append(">\n");
         } else if (isCheckboxListItem && !isInCheckboxList) {
           // Current paragraph is the first item in a list
           isInCheckboxList = true;
           out.append("<ul data-type=\"checkbox\"")
               .append(getAlignmentStyleAttr(text, i, next))
+              .append(getDirectionAttr(text, i, next))
               .append(">\n");
         }
 
@@ -242,9 +259,10 @@ public class EnrichedParser {
         out.append("<");
         out.append(tagType);
 
-        // Add alignment style to non-list paragraph/heading tags
+        // Add alignment style and writing direction to non-list paragraph/heading tags
         if (!isList) {
           out.append(getAlignmentStyleAttr(text, i, next));
+          out.append(getDirectionAttr(text, i, next));
         }
 
         if (isCheckboxListItem) {
@@ -413,6 +431,7 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static Boolean isInCheckboxList = false;
   private static Boolean isEmptyTag = false;
   private static String currentListAlignmentCssValue = null;
+  private static String currentListDirectionValue = null;
 
   private static final Pattern CSS_ALIGNMENT_PATTERN =
       Pattern.compile("text-align\\s*:\\s*(left|center|right)", Pattern.CASE_INSENSITIVE);
@@ -424,10 +443,25 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     return m.find() ? m.group(1).toLowerCase() : null;
   }
 
+  private static String parseDirectionValue(Attributes attributes) {
+    String dir = attributes.getValue("", "dir");
+    if (dir == null) return null;
+    dir = dir.trim().toLowerCase();
+    if (dir.equals("ltr") || dir.equals("rtl")) return dir;
+    return null;
+  }
+
   private static void pushAlignmentMark(Editable text, Attributes attributes) {
     String cssValue = parseCssAlignmentValue(attributes);
     if (cssValue != null) {
       start(text, new Alignment(cssValue));
+    }
+  }
+
+  private static void pushDirectionMark(Editable text, Attributes attributes) {
+    String value = parseDirectionValue(attributes);
+    if (value != null) {
+      start(text, new Direction(value));
     }
   }
 
@@ -519,16 +553,19 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       isEmptyTag = true;
       startBlockElement(mSpannableStringBuilder);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("ul")) {
       isInOrderedList = false;
       String dataType = attributes.getValue("", "data-type");
       isInCheckboxList = "checkbox".equals(dataType);
       currentListAlignmentCssValue = parseCssAlignmentValue(attributes);
+      currentListDirectionValue = parseDirectionValue(attributes);
       startBlockElement(mSpannableStringBuilder);
     } else if (tag.equalsIgnoreCase("ol")) {
       isInOrderedList = true;
       currentOrderedListItemIndex = 0;
       currentListAlignmentCssValue = parseCssAlignmentValue(attributes);
+      currentListDirectionValue = parseDirectionValue(attributes);
       startBlockElement(mSpannableStringBuilder);
     } else if (tag.equalsIgnoreCase("li")) {
       isEmptyTag = true;
@@ -554,21 +591,27 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     } else if (tag.equalsIgnoreCase("h1")) {
       startHeading(mSpannableStringBuilder, 1);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("h2")) {
       startHeading(mSpannableStringBuilder, 2);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("h3")) {
       startHeading(mSpannableStringBuilder, 3);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("h4")) {
       startHeading(mSpannableStringBuilder, 4);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("h5")) {
       startHeading(mSpannableStringBuilder, 5);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("h6")) {
       startHeading(mSpannableStringBuilder, 6);
       pushAlignmentMark(mSpannableStringBuilder, attributes);
+      pushDirectionMark(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("img")) {
       // Image content means the current tag is not empty (e.g. <li><img .../></li>).
       isEmptyTag = false;
@@ -587,9 +630,11 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       endBlockElement(mSpannableStringBuilder, mSpanFactory);
     } else if (tag.equalsIgnoreCase("ul")) {
       currentListAlignmentCssValue = null;
+      currentListDirectionValue = null;
       endBlockElement(mSpannableStringBuilder, mSpanFactory);
     } else if (tag.equalsIgnoreCase("ol")) {
       currentListAlignmentCssValue = null;
+      currentListDirectionValue = null;
       endBlockElement(mSpannableStringBuilder, mSpanFactory);
     } else if (tag.equalsIgnoreCase("li")) {
       endLi(mSpannableStringBuilder, mStyle, mSpanFactory);
@@ -658,6 +703,10 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     if (a != null) {
       setParagraphSpanFromMark(text, a, spanFactory.createAlignmentSpan(a.mCssValue));
     }
+    Direction d = getLast(text, Direction.class);
+    if (d != null) {
+      setParagraphSpanFromMark(text, d, spanFactory.createDirectionSpan(d.mValue));
+    }
   }
 
   private static void handleBr(Editable text) {
@@ -669,6 +718,10 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
 
     if (currentListAlignmentCssValue != null) {
       start(text, new Alignment(currentListAlignmentCssValue));
+    }
+
+    if (currentListDirectionValue != null) {
+      start(text, new Direction(currentListDirectionValue));
     }
 
     if (isInOrderedList) {
@@ -1029,6 +1082,14 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
 
     public Alignment(String cssValue) {
       this.mCssValue = cssValue;
+    }
+  }
+
+  private static class Direction {
+    final String mValue;
+
+    public Direction(String value) {
+      this.mValue = value;
     }
   }
 }

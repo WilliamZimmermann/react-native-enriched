@@ -2,6 +2,7 @@
 #import "AlignmentUtils.h"
 #import "AttachmentLayoutUtils.h"
 #import "CoreText/CoreText.h"
+#import "DirectionUtils.h"
 #import "DotReplacementUtils.h"
 #import "HtmlParser.h"
 #import "ImageAttachment.h"
@@ -63,6 +64,7 @@ using namespace facebook::react;
   NSString *_submitBehavior;
   NSDictionary<NSAttributedStringKey, id> *_capturedAttributesBeforeChange;
   NSString *_recentlyEmittedAlignment;
+  NSString *_recentlyEmittedDirection;
 }
 
 @synthesize blockEmitting = blockEmitting;
@@ -134,6 +136,7 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   _recentlyActiveLinkRange = NSMakeRange(0, 0);
   _recentlyActiveMentionRange = NSMakeRange(0, 0);
   _recentlyEmittedAlignment = @"left";
+  _recentlyEmittedDirection = @"auto";
   _recentInputString = @"";
   _recentlyEmittedHtml = @"<html>\n<p></p>\n</html>";
   _emitHtml = NO;
@@ -905,17 +908,21 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     newAttrs[NSForegroundColorAttributeName] = _placeholderColor;
   }
 
-  // Get the current active alignment in input
+  // Get the current active alignment and writing direction in input
   NSParagraphStyle *currentTypingPara =
       textView.typingAttributes[NSParagraphStyleAttributeName];
   NSTextAlignment activeAlignment =
       currentTypingPara ? currentTypingPara.alignment : NSTextAlignmentNatural;
+  NSWritingDirection activeDirection =
+      currentTypingPara ? currentTypingPara.baseWritingDirection
+                        : NSWritingDirectionNatural;
   NSMutableParagraphStyle *placeholderPStyle =
       [newAttrs[NSParagraphStyleAttributeName] mutableCopy];
   if (!placeholderPStyle) {
     placeholderPStyle = [[NSMutableParagraphStyle alloc] init];
   }
   placeholderPStyle.alignment = activeAlignment;
+  placeholderPStyle.baseWritingDirection = activeDirection;
   newAttrs[NSParagraphStyleAttributeName] = placeholderPStyle;
 
   NSAttributedString *newAttrStr =
@@ -1145,6 +1152,13 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     updateNeeded = YES;
   }
 
+  // detect direction change
+  DirectionStyle *directionStyle = stylesDict[@([DirectionStyle getType])];
+  NSString *currentDirection = [directionStyle getStyleState];
+  if (![currentDirection isEqualToString:_recentlyEmittedDirection]) {
+    updateNeeded = YES;
+  }
+
   if (updateNeeded) {
     auto emitter = [self getEventEmitter];
     if (emitter != nullptr) {
@@ -1152,6 +1166,7 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
       _activeStyles = newActiveStyles;
       _blockedStyles = newBlockedStyles;
       _recentlyEmittedAlignment = currentAlignment;
+      _recentlyEmittedDirection = currentDirection;
 
       emitter->onChangeState(
           {.bold = GET_STYLE_STATE([BoldStyle getType]),
@@ -1174,7 +1189,8 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
            .image = GET_STYLE_STATE([ImageStyle getType]),
            .checkboxList = GET_STYLE_STATE([CheckboxListStyle getType]),
            .highlight = GET_STYLE_STATE([HighlightStyle getType]),
-           .alignment = [currentAlignment UTF8String]});
+           .alignment = [currentAlignment UTF8String],
+           .direction = [currentDirection UTF8String]});
     }
   }
 
@@ -1358,6 +1374,20 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     AlignmentStyle *alignmentStyle = stylesDict[@([AlignmentStyle getType])];
     [alignmentStyle
           addAlignment:[AlignmentUtils stringToAlignment:alignmentString]
+                 range:textView.selectedRange
+            withTyping:YES
+        withDirtyRange:YES];
+
+    [self anyTextMayHaveBeenModified];
+    if (!_placeholderLabel.isHidden) {
+      [self refreshPlaceholderLabelStyles];
+    }
+  } else if ([commandName isEqualToString:@"setTextDirection"]) {
+    NSString *directionString = (NSString *)args[0];
+
+    DirectionStyle *directionStyle = stylesDict[@([DirectionStyle getType])];
+    [directionStyle
+          addDirection:[DirectionUtils stringToDirection:directionString]
                  range:textView.selectedRange
             withTyping:YES
         withDirtyRange:YES];
@@ -2142,6 +2172,8 @@ static UIColor *katavParseHexColor(NSString *hex) {
 
     AlignmentStyle *alignmentStyle = stylesDict[@([AlignmentStyle getType])];
     NSString *currentAlignment = [alignmentStyle getStyleState];
+    DirectionStyle *directionStyle = stylesDict[@([DirectionStyle getType])];
+    NSString *currentDirection = [directionStyle getStyleState];
 
     emitter->onContextMenuItemPress(
         {.itemText = [itemText toCppString],
@@ -2170,7 +2202,8 @@ static UIColor *katavParseHexColor(NSString *hex) {
              .mention = GET_STYLE_STATE([MentionStyle getType]),
              .checkboxList = GET_STYLE_STATE([CheckboxListStyle getType]),
              .highlight = GET_STYLE_STATE([HighlightStyle getType]),
-             .alignment = [currentAlignment UTF8String]}});
+             .alignment = [currentAlignment UTF8String],
+             .direction = [currentDirection UTF8String]}});
   }
 }
 

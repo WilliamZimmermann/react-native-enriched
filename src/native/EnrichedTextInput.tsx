@@ -325,6 +325,9 @@ export const EnrichedTextInput = ({
     ) => {
       Commands.setTextAlignment(nullthrows(nativeRef.current), alignment);
     },
+    setTextDirection: (direction: 'ltr' | 'rtl' | 'auto') => {
+      Commands.setTextDirection(nullthrows(nativeRef.current), direction);
+    },
   }));
 
   const handleMentionEvent = (e: NativeSyntheticEvent<OnMentionEvent>) => {

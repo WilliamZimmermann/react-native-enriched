@@ -1,5 +1,6 @@
 #import "InputHtmlParser.h"
 #import "AlignmentEntry.h"
+#import "DirectionEntry.h"
 #import "EnrichedTextInputView.h"
 #import "HtmlParser.h"
 #import "StringExtension.h"
@@ -31,6 +32,8 @@
     NSArray *alignments = (NSArray *)processingResult[2];
     NSArray *listDepths =
         processingResult.count > 3 ? (NSArray *)processingResult[3] : nil;
+    NSArray *directions =
+        processingResult.count > 4 ? (NSArray *)processingResult[4] : nil;
 
     // set new text
     _input->textView.text = plainText;
@@ -40,6 +43,7 @@
            offsetFromBeginning:0
                plainTextLength:plainText.length];
     [self applyProcessedAlignments:alignments offset:0];
+    [self applyProcessedDirections:directions offset:0];
     [self applyProcessedListDepths:listDepths offset:0];
     [_input anyTextMayHaveBeenModified];
   } @catch (NSException *exception) {
@@ -60,6 +64,8 @@
     NSArray *alignments = (NSArray *)processingResult[2];
     NSArray *listDepths =
         processingResult.count > 3 ? (NSArray *)processingResult[3] : nil;
+    NSArray *directions =
+        processingResult.count > 4 ? (NSArray *)processingResult[4] : nil;
 
     // we can use ready replace util
     [TextInsertionUtils replaceText:plainText
@@ -72,6 +78,7 @@
            offsetFromBeginning:range.location
                plainTextLength:plainText.length];
     [self applyProcessedAlignments:alignments offset:range.location];
+    [self applyProcessedDirections:directions offset:range.location];
     [self applyProcessedListDepths:listDepths offset:range.location];
     [_input anyTextMayHaveBeenModified];
   } @catch (NSException *exception) {
@@ -94,6 +101,8 @@
     NSArray *alignments = (NSArray *)processingResult[2];
     NSArray *listDepths =
         processingResult.count > 3 ? (NSArray *)processingResult[3] : nil;
+    NSArray *directions =
+        processingResult.count > 4 ? (NSArray *)processingResult[4] : nil;
 
     // same here, insertion utils got our back
     [TextInsertionUtils insertText:plainText
@@ -106,6 +115,7 @@
            offsetFromBeginning:location
                plainTextLength:plainText.length];
     [self applyProcessedAlignments:alignments offset:location];
+    [self applyProcessedDirections:directions offset:location];
     [self applyProcessedListDepths:listDepths offset:location];
     [_input anyTextMayHaveBeenModified];
   } @catch (NSException *exception) {
@@ -252,6 +262,27 @@
         NSMakeRange(offset + entry.range.location, entry.range.length);
 
     [alignmentStyle addAlignment:entry.alignment
+                           range:finalRange
+                      withTyping:NO
+                  withDirtyRange:NO];
+  }
+}
+
+- (void)applyProcessedDirections:(NSArray<DirectionEntry *> *)directions
+                          offset:(NSInteger)offset {
+  DirectionStyle *directionStyle =
+      _input.stylesDict[@([DirectionStyle getType])];
+
+  if (directionStyle == nil) {
+    return;
+  }
+
+  for (DirectionEntry *entry in directions) {
+    // Offset the range (e.g. if inserting into the middle of text)
+    NSRange finalRange =
+        NSMakeRange(offset + entry.range.location, entry.range.length);
+
+    [directionStyle addDirection:entry.direction
                            range:finalRange
                       withTyping:NO
                   withDirtyRange:NO];

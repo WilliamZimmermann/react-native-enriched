@@ -1,5 +1,6 @@
 #import "TextHtmlParser.h"
 #import "AlignmentEntry.h"
+#import "DirectionEntry.h"
 #import "EnrichedTextView.h"
 #import "HtmlParser.h"
 #import "LinkData.h"
@@ -35,6 +36,7 @@
     NSString *plainText = result[0];
     NSArray *processedStyles = result[1];
     NSArray *alignments = result[2];
+    NSArray *directions = result.count > 4 ? result[4] : nil;
 
     NSMutableAttributedString *body = [[NSMutableAttributedString alloc]
         initWithString:plainText
@@ -42,6 +44,7 @@
     [_view->textView.textStorage setAttributedString:body];
     [self applyProcessedStyles:processedStyles];
     [self applyProcessedAlignments:alignments];
+    [self applyProcessedDirections:directions];
   } @catch (NSException *exception) {
     RCTLogWarn(@"[EnrichedTextView]: Failed to parse HTML: (%@), falling back "
                @"to raw input.",
@@ -175,6 +178,24 @@
                       withTyping:NO
                   withDirtyRange:NO];
     [alignmentStyle applyStyling:finalRange];
+  }
+}
+
+- (void)applyProcessedDirections:(NSArray<DirectionEntry *> *)directions {
+  DirectionStyle *directionStyle =
+      _view.stylesDict[@([DirectionStyle getType])];
+
+  if (directionStyle == nil) {
+    return;
+  }
+
+  for (DirectionEntry *entry in directions) {
+    NSRange finalRange = NSMakeRange(entry.range.location, entry.range.length);
+    [directionStyle addDirection:entry.direction
+                           range:finalRange
+                      withTyping:NO
+                  withDirtyRange:NO];
+    [directionStyle applyStyling:finalRange];
   }
 }
 

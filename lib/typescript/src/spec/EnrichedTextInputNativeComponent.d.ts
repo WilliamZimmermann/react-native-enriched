@@ -116,6 +116,7 @@ export interface OnChangeStateEvent {
         isBlocking: boolean;
     };
     alignment: string;
+    direction: string;
 }
 export interface OnLinkDetected {
     text: string;
@@ -270,6 +271,7 @@ export interface OnContextMenuItemPressEvent {
             isBlocking: boolean;
         };
         alignment: string;
+        direction: string;
     };
 }
 interface TargetedEvent {
@@ -420,6 +422,7 @@ interface NativeCommands {
     requestSelectionHTML: (viewRef: React.ElementRef<ComponentType>, requestId: Int32, start: Int32, end: Int32) => void;
     replaceSelectionWithHtml: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, html: string) => void;
     setTextAlignment: (viewRef: React.ElementRef<ComponentType>, alignment: string) => void;
+    setTextDirection: (viewRef: React.ElementRef<ComponentType>, direction: string) => void;
     addHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, color: string) => void;
     removeHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearFormatting: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;

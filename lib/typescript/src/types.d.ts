@@ -331,6 +331,9 @@ export interface OnChangeStateEvent {
         isBlocking: boolean;
     };
     alignment: string;
+    /** Active paragraph writing direction: 'ltr' | 'rtl' | 'auto' ('auto' =
+     *  first-strong bidi detection, no explicit dir). */
+    direction: string;
 }
 export interface OnLinkDetected {
     text: string;
@@ -428,6 +431,9 @@ export interface EnrichedTextInputInstance extends NativeMethods {
     startMention: (indicator: string) => void;
     setMention: (indicator: string, text: string, attributes?: Record<string, string>) => void;
     setTextAlignment: (alignment: 'left' | 'center' | 'right' | 'justify' | 'auto') => void;
+    /** Set the writing direction of the selected paragraph(s). 'auto' clears any
+     *  explicit direction (first-strong bidi); 'ltr' / 'rtl' pin it. */
+    setTextDirection: (direction: 'ltr' | 'rtl' | 'auto') => void;
 }
 export interface ContextMenuItem {
     text: string;

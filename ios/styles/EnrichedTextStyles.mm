@@ -57,5 +57,8 @@
 @implementation EnrichedTextAlignmentStyle
 @end
 
+@implementation EnrichedTextDirectionStyle
+@end
+
 @implementation EnrichedTextImageStyle
 @end

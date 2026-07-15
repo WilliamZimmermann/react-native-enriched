@@ -48,6 +48,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)requestSelectionHTML:(NSInteger)requestId start:(NSInteger)start end:(NSInteger)end;
 - (void)replaceSelectionWithHtml:(NSInteger)start end:(NSInteger)end html:(NSString *)html;
 - (void)setTextAlignment:(NSString *)alignment;
+- (void)setTextDirection:(NSString *)direction;
 - (void)addHighlight:(NSInteger)start end:(NSInteger)end color:(NSString *)color;
 - (void)removeHighlight:(NSInteger)start end:(NSInteger)end;
 - (void)clearFormatting:(NSInteger)start end:(NSInteger)end;
@@ -714,6 +715,26 @@ if ([commandName isEqualToString:@"setTextAlignment"]) {
   NSString * alignment = (NSString *)arg0;
 
   [componentView setTextAlignment:alignment];
+  return;
+}
+
+if ([commandName isEqualToString:@"setTextDirection"]) {
+#if RCT_DEBUG
+  if ([args count] != 1) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 1);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSString * direction = (NSString *)arg0;
+
+  [componentView setTextDirection:direction];
   return;
 }
 

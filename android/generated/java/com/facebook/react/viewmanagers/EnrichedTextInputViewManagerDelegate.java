@@ -222,6 +222,9 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "setTextAlignment":
         mViewManager.setTextAlignment(view, args.getString(0));
         break;
+      case "setTextDirection":
+        mViewManager.setTextDirection(view, args.getString(0));
+        break;
       case "addHighlight":
         mViewManager.addHighlight(view, args.getInt(0), args.getInt(1), args.getString(2));
         break;

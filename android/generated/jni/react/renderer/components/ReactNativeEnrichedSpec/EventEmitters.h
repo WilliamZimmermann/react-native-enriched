@@ -175,6 +175,7 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
     OnChangeStateCheckboxList checkboxList;
     OnChangeStateHighlight highlight;
     std::string alignment;
+    std::string direction;
     };
 
   struct OnLinkDetected {
@@ -367,6 +368,7 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
     OnContextMenuItemPressStyleStateCheckboxList checkboxList;
     OnContextMenuItemPressStyleStateHighlight highlight;
     std::string alignment;
+    std::string direction;
     };
 
   struct OnContextMenuItemPress {

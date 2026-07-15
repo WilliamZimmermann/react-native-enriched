@@ -54,6 +54,8 @@ class EnrichedSpanState(
     private set
   var currentAlignment: String = "auto"
     private set
+  var currentDirection: String = "auto"
+    private set
 
   fun setBoldStart(start: Int?) {
     this.boldStart = start
@@ -137,6 +139,11 @@ class EnrichedSpanState(
 
   fun setAlignment(value: String) {
     this.currentAlignment = value
+    emitStateChangeEvent()
+  }
+
+  fun setDirection(value: String) {
+    this.currentDirection = value
     emitStateChangeEvent()
   }
 
@@ -254,6 +261,7 @@ class EnrichedSpanState(
     payload.putMap("mention", getStyleState(activeStyles, EnrichedSpans.MENTION))
     payload.putMap("checkboxList", getStyleState(activeStyles, EnrichedSpans.CHECKBOX_LIST))
     payload.putString("alignment", currentAlignment)
+    payload.putString("direction", currentDirection)
 
     return payload
   }

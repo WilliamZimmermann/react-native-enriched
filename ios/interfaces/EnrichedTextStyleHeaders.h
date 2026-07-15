@@ -60,3 +60,6 @@
 
 @interface EnrichedTextAlignmentStyle : AlignmentStyle
 @end
+
+@interface EnrichedTextDirectionStyle : DirectionStyle
+@end

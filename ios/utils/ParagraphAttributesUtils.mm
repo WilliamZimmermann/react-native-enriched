@@ -1,5 +1,6 @@
 #import "ParagraphAttributesUtils.h"
 #import "AlignmentUtils.h"
+#import "DirectionUtils.h"
 #import "EnrichedTextInputView.h"
 #import "RangeUtils.h"
 #import "StyleHeaders.h"
@@ -45,11 +46,15 @@
   if (range.location == nonNewlineRange.location &&
       range.length >= nonNewlineRange.length) {
 
-    // Preserve the paragraph alignment across typing attribute resets.
+    // Preserve the paragraph alignment and writing direction across typing
+    // attribute resets.
     NSParagraphStyle *currentParaStyle =
         typedInput->textView.typingAttributes[NSParagraphStyleAttributeName];
     NSTextAlignment savedAlignment =
         currentParaStyle ? currentParaStyle.alignment : NSTextAlignmentNatural;
+    NSWritingDirection savedDirection =
+        currentParaStyle ? currentParaStyle.baseWritingDirection
+                         : NSWritingDirectionNatural;
 
     // for styles that need ZWS (lists, quotes, etc.) we do the following:
     // - manually do the removing
@@ -67,7 +72,8 @@
                                    host:typedInput
                           withSelection:YES];
         [self resetTypingAttributes:typedInput
-                preservingAlignment:savedAlignment];
+                preservingAlignment:savedAlignment
+                          direction:savedDirection];
 
         if (style == cbLStyle) {
           [cbLStyle addWithChecked:isCurrentlyChecked
@@ -90,7 +96,9 @@
                additionalAttributes:nullptr
                                host:typedInput
                       withSelection:YES];
-    [self resetTypingAttributes:typedInput preservingAlignment:savedAlignment];
+    [self resetTypingAttributes:typedInput
+            preservingAlignment:savedAlignment
+                      direction:savedDirection];
     return YES;
   }
 
@@ -245,6 +253,9 @@
         typedInput->textView.typingAttributes[NSParagraphStyleAttributeName];
     NSTextAlignment savedAlignment =
         currentParaStyle ? currentParaStyle.alignment : NSTextAlignmentNatural;
+    NSWritingDirection savedDirection =
+        currentParaStyle ? currentParaStyle.baseWritingDirection
+                         : NSWritingDirectionNatural;
 
     [TextInsertionUtils replaceText:text
                                  at:range
@@ -252,7 +263,9 @@
                                host:typedInput
                       withSelection:YES];
 
-    [self resetTypingAttributes:typedInput preservingAlignment:savedAlignment];
+    [self resetTypingAttributes:typedInput
+            preservingAlignment:savedAlignment
+                      direction:savedDirection];
     return YES;
   }
 
@@ -260,17 +273,24 @@
 }
 
 + (void)resetTypingAttributes:(EnrichedTextInputView *)input
-          preservingAlignment:(NSTextAlignment)alignment {
+          preservingAlignment:(NSTextAlignment)alignment
+                    direction:(NSWritingDirection)direction {
   NSMutableDictionary *resetAttrs =
       [input->defaultTypingAttributes mutableCopy];
 
   NSMutableParagraphStyle *paraStyle =
       [resetAttrs[NSParagraphStyleAttributeName] mutableCopy]
           ?: [[NSMutableParagraphStyle alloc] init];
-  paraStyle.textLists = @[ [[NSTextList alloc]
-      initWithMarkerFormat:[AlignmentUtils alignmentToMarker:alignment]
-                   options:0] ];
+  paraStyle.textLists = @[
+    [[NSTextList alloc]
+        initWithMarkerFormat:[AlignmentUtils alignmentToMarker:alignment]
+                     options:0],
+    [[NSTextList alloc]
+        initWithMarkerFormat:[DirectionUtils directionToMarker:direction]
+                     options:0]
+  ];
   paraStyle.alignment = alignment;
+  paraStyle.baseWritingDirection = direction;
   resetAttrs[NSParagraphStyleAttributeName] = paraStyle;
 
   input->textView.typingAttributes = resetAttrs;

@@ -149,9 +149,13 @@
       NSTextAlignment savedAlignment = currentTypingStyle
                                            ? currentTypingStyle.alignment
                                            : NSTextAlignmentNatural;
+      NSWritingDirection savedDirection =
+          currentTypingStyle ? currentTypingStyle.baseWritingDirection
+                             : NSWritingDirectionNatural;
 
       [ParagraphAttributesUtils resetTypingAttributes:_input
-                                  preservingAlignment:savedAlignment];
+                                  preservingAlignment:savedAlignment
+                                            direction:savedDirection];
       return;
     }
   }

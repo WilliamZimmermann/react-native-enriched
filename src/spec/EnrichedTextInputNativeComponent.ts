@@ -129,6 +129,9 @@ export interface OnChangeStateEvent {
     isBlocking: boolean;
   };
   alignment: string;
+  // Active paragraph writing direction: 'ltr' | 'rtl' | 'auto'. 'auto' means the
+  // paragraph follows first-strong bidi detection (no explicit dir attribute).
+  direction: string;
 }
 
 export interface OnLinkDetected {
@@ -297,6 +300,7 @@ export interface OnContextMenuItemPressEvent {
       isBlocking: boolean;
     };
     alignment: string;
+    direction: string;
   };
 }
 
@@ -526,6 +530,12 @@ interface NativeCommands {
     viewRef: React.ElementRef<ComponentType>,
     alignment: string
   ) => void;
+  // Set the writing direction of the paragraph(s) in the current selection.
+  // 'auto' clears any explicit direction (first-strong bidi); 'ltr'/'rtl' pin it.
+  setTextDirection: (
+    viewRef: React.ElementRef<ComponentType>,
+    direction: string
+  ) => void;
   addHighlight: (
     viewRef: React.ElementRef<ComponentType>,
     start: Int32,
@@ -590,6 +600,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'requestSelectionHTML',
     'replaceSelectionWithHtml',
     'setTextAlignment',
+    'setTextDirection',
     'addHighlight',
     'removeHighlight',
     'clearFormatting',

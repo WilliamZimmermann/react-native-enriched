@@ -74,6 +74,7 @@
       @([BlockQuoteStyle getType]), @([CodeBlockStyle getType])
     ],
     @([AlignmentStyle getType]) : @[],
+    @([DirectionStyle getType]) : @[],
     @([BlockQuoteStyle getType]) : @[
       @([H1Style getType]), @([H2Style getType]), @([H3Style getType]),
       @([H4Style getType]), @([H5Style getType]), @([H6Style getType]),
@@ -121,6 +122,7 @@
     @([OrderedListStyle getType]) : @[],
     @([CheckboxListStyle getType]) : @[],
     @([AlignmentStyle getType]) : @[],
+    @([DirectionStyle getType]) : @[],
     @([BlockQuoteStyle getType]) : @[],
     @([CodeBlockStyle getType]) : @[],
     @([ImageStyle getType]) : @[ @([InlineCodeStyle getType]) ]
@@ -138,9 +140,10 @@
     [H4Style class],          [H5Style class],
     [H6Style class],          [UnorderedListStyle class],
     [OrderedListStyle class], [CheckboxListStyle class],
-    [AlignmentStyle class],   [BlockQuoteStyle class],
-    [CodeBlockStyle class],   [ImageStyle class],
-    [TableStyle class],       [HighlightStyle class]
+    [AlignmentStyle class],   [DirectionStyle class],
+    [BlockQuoteStyle class],  [CodeBlockStyle class],
+    [ImageStyle class],       [TableStyle class],
+    [HighlightStyle class]
   ];
 
   // No viewer counterpart for TableStyle yet — the read-only viewer flavour
@@ -165,6 +168,7 @@
     [EnrichedTextOrderedListStyle class],
     [EnrichedTextCheckboxListStyle class],
     [EnrichedTextAlignmentStyle class],
+    [EnrichedTextDirectionStyle class],
     [EnrichedTextBlockQuoteStyle class],
     [EnrichedTextCodeBlockStyle class],
     [EnrichedTextImageStyle class],

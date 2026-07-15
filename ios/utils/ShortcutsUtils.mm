@@ -313,12 +313,13 @@ typedef struct {
 }
 
 /// Paragraph already has a paragraph-level style (list, quote, heading, …).
-/// Alignment is ignored.
+/// Alignment and direction are ignored.
 + (BOOL)paragraphHasActiveParagraphStyleInRange:(NSRange)paragraphRange
                                           input:(EnrichedTextInputView *)input {
   for (NSNumber *typeKey in input->stylesDict) {
     StyleBase *style = input->stylesDict[typeKey];
-    if (![style isParagraph] || [[style class] getType] == Alignment) {
+    if (![style isParagraph] || [[style class] getType] == Alignment ||
+        [[style class] getType] == Direction) {
       continue;
     }
     if ([style detect:paragraphRange]) {
@@ -395,6 +396,9 @@ typedef struct {
         input->textView.typingAttributes[NSParagraphStyleAttributeName];
     NSTextAlignment savedAlignment =
         currentParaStyle ? currentParaStyle.alignment : NSTextAlignmentNatural;
+    NSWritingDirection savedDirection =
+        currentParaStyle ? currentParaStyle.baseWritingDirection
+                         : NSWritingDirectionNatural;
 
     NSRange triggerRange = NSMakeRange(match.delimStart, match.delimPrefixLen);
 
@@ -414,7 +418,8 @@ typedef struct {
                                       forHost:input];
 
     [ParagraphAttributesUtils resetTypingAttributes:input
-                                preservingAlignment:savedAlignment];
+                                preservingAlignment:savedAlignment
+                                          direction:savedDirection];
 
     StyleBase *style = input->stylesDict[@(type)];
     if (style != nil) {
