@@ -7,5 +7,5 @@
                           useHtmlNormalizer:(BOOL)useHtmlNormalizer;
 + (NSArray *_Nonnull)getTextAndStylesFromHtml:(NSString *_Nonnull)fixedHtml;
 + (NSString *_Nonnull)parseToHtmlFromRange:(NSRange)range
-                                      host:(id<EnrichedViewHost>)host;
+                                      host:(id<EnrichedViewHost> _Nonnull)host;
 @end
