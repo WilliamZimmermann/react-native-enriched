@@ -33,6 +33,13 @@ static NSString *const kFontSizeAttribute = @"EnrichedFontSize";
 // meant to win, which it does as long as FontSize sorts after the headings in
 // StyleType (it does — it sits just before None).
 - (void)applyStyling:(NSRange)range {
+  // Collect first, mutate after. Writing NSFontAttributeName from inside an
+  // enumeration of the same text storage can invalidate the walk mid-flight,
+  // which drops runs silently — collecting the (range, size) pairs up front
+  // keeps the enumeration read-only.
+  NSMutableArray<NSValue *> *ranges = [NSMutableArray array];
+  NSMutableArray<NSNumber *> *sizes = [NSMutableArray array];
+
   [self.host.textView.textStorage
       enumerateAttribute:kFontSizeAttribute
                  inRange:range
@@ -51,15 +58,28 @@ static NSString *const kFontSizeAttribute = @"EnrichedFontSize";
                             usingBlock:^(id _Nullable fontValue,
                                          NSRange fontRange,
                                          BOOL *_Nonnull fontStop) {
-                              UIFont *font = (UIFont *)fontValue;
-                              if (font == nullptr)
+                              if (fontValue == nullptr)
                                 return;
-                              [self.host.textView.textStorage
-                                  addAttribute:NSFontAttributeName
-                                         value:[font setSize:size.doubleValue]
-                                         range:fontRange];
+                              [ranges
+                                  addObject:[NSValue valueWithRange:fontRange]];
+                              [sizes addObject:size];
                             }];
               }];
+
+  for (NSUInteger i = 0; i < ranges.count; i++) {
+    NSRange fontRange = [ranges[i] rangeValue];
+    UIFont *font = [self.host.textView.textStorage
+             attribute:NSFontAttributeName
+               atIndex:fontRange.location
+        effectiveRange:nullptr];
+    if (font == nullptr) {
+      continue;
+    }
+    [self.host.textView.textStorage
+        addAttribute:NSFontAttributeName
+               value:[font setSize:sizes[i].doubleValue]
+               range:fontRange];
+  }
 }
 
 - (AttributeEntry *)getEntryIfPresent:(NSRange)range {
