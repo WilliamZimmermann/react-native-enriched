@@ -126,6 +126,12 @@
 - (TableData *)getTableDataAt:(NSUInteger)location;
 @end
 
+@interface FontSizeStyle : StyleBase
+- (void)addFontSizeAtRange:(NSRange)range size:(CGFloat)size;
+- (void)removeFontSizeInRange:(NSRange)range;
+- (CGFloat)getFontSizeAt:(NSUInteger)location;
+@end
+
 @interface HighlightStyle : StyleBase
 - (void)addHighlightAtRange:(NSRange)range color:(UIColor *)color;
 - (void)removeHighlightInRange:(NSRange)range;

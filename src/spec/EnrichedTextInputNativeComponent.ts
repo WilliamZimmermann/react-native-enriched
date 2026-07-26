@@ -547,6 +547,17 @@ interface NativeCommands {
     start: Int32,
     end: Int32
   ) => void;
+  addFontSize: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    size: Float
+  ) => void;
+  removeFontSize: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32
+  ) => void;
   // Strip inline formatting from the range (leaves plain text).
   clearFormatting: (
     viewRef: React.ElementRef<ComponentType>,
@@ -603,6 +614,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'setTextDirection',
     'addHighlight',
     'removeHighlight',
+    'addFontSize',
+    'removeFontSize',
     'clearFormatting',
     'clearColors',
   ],

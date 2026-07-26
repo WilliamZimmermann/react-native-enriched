@@ -425,6 +425,8 @@ interface NativeCommands {
     setTextDirection: (viewRef: React.ElementRef<ComponentType>, direction: string) => void;
     addHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, color: string) => void;
     removeHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    addFontSize: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, size: Float) => void;
+    removeFontSize: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearFormatting: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearColors: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
 }

@@ -143,7 +143,7 @@
     [AlignmentStyle class],   [DirectionStyle class],
     [BlockQuoteStyle class],  [CodeBlockStyle class],
     [ImageStyle class],       [TableStyle class],
-    [HighlightStyle class]
+    [HighlightStyle class],   [FontSizeStyle class]
   ];
 
   // No viewer counterpart for TableStyle yet — the read-only viewer flavour
@@ -173,7 +173,8 @@
     [EnrichedTextCodeBlockStyle class],
     [EnrichedTextImageStyle class],
     [TableStyle class],
-    [HighlightStyle class]
+    [HighlightStyle class],
+    [FontSizeStyle class]
   ];
 
   NSMutableDictionary *dict = [NSMutableDictionary new];

@@ -485,6 +485,14 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   setHighlight: (start: number, end: number, color: string) => void;
   /** Strips any highlight in the range without touching other attributes. */
   removeHighlight: (start: number, end: number) => void;
+  /** Applies a font size (px) over the range. Stored as a marker attribute and
+   *  re-derived onto the font each styling pass, so it composes with
+   *  bold/italic; serializes to `<span style="font-size:NNpx">`, matching
+   *  TipTap's FontSize mark. */
+  setFontSize: (start: number, end: number, size: number) => void;
+  /** Clears any explicit font size in the range, returning it to the editor's
+   *  base size. */
+  removeFontSize: (start: number, end: number) => void;
   setImage: (src: string, width: number, height: number) => void;
   startMention: (indicator: string) => void;
   setMention: (

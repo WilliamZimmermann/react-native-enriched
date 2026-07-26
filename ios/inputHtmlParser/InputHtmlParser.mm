@@ -183,6 +183,12 @@
                                          tableData:tableData
                                      withSelection:NO
                                     withDirtyRange:YES];
+      } else if ([styleType isEqualToNumber:@([FontSizeStyle getType])]) {
+        NSNumber *size = (NSNumber *)stylePair.styleValue;
+        if ([size isKindOfClass:[NSNumber class]] && size.doubleValue > 0) {
+          [((FontSizeStyle *)baseStyle) addFontSizeAtRange:styleRange
+                                                      size:size.doubleValue];
+        }
       } else if ([styleType isEqualToNumber:@([HighlightStyle getType])]) {
         NSString *hexColor = (NSString *)stylePair.styleValue;
         UIColor *color = nil;

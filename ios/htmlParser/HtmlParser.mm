@@ -1001,6 +1001,27 @@
       [styleArr addObject:@([BoldStyle getType])];
     } else if ([tagName isEqualToString:@"i"]) {
       [styleArr addObject:@([ItalicStyle getType])];
+    } else if ([tagName isEqualToString:@"span"]) {
+      // `<span style="font-size:NNpx">` — TipTap's FontSize mark, and what
+      // our own serializer emits. Any other span carries no style we model,
+      // so it contributes nothing and its text is kept by the caller.
+      NSRegularExpression *sizeRegex = [NSRegularExpression
+          regularExpressionWithPattern:
+              @"font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*px"
+                               options:NSRegularExpressionCaseInsensitive
+                                 error:nullptr];
+      NSTextCheckingResult *sizeMatch =
+          [sizeRegex firstMatchInString:params
+                                options:0
+                                  range:NSMakeRange(0, params.length)];
+      if (sizeMatch != nullptr && sizeMatch.numberOfRanges > 1) {
+        double px = [[params substringWithRange:[sizeMatch rangeAtIndex:1]]
+            doubleValue];
+        if (px > 0) {
+          [styleArr addObject:@([FontSizeStyle getType])];
+          stylePair.styleValue = @(px);
+        }
+      }
     } else if ([tagName isEqualToString:@"mark"]) {
       // <mark style="background-color: #xxx;"> — TipTap's
       // @tiptap/extension-highlight default emission. Pull the hex out
@@ -1778,6 +1799,23 @@
                            ri, gi, bi];
     }
     return @"mark";
+  } else if ([style isEqualToNumber:@([FontSizeStyle getType])]) {
+    if (openingTag) {
+      // `<span style="font-size:NNpx">` — the same shape TipTap's FontSize
+      // mark serializes to, so a note round-trips between the app and the
+      // web editor without remapping.
+      FontSizeStyle *fontSizeStyle =
+          (FontSizeStyle *)host.stylesDict[@([FontSizeStyle getType])];
+      if (fontSizeStyle != nullptr) {
+        CGFloat size = [fontSizeStyle getFontSizeAt:location];
+        if (size > 0) {
+          return [NSString stringWithFormat:@"span style=\"font-size:%dpx;\"",
+                                            (int)round(size)];
+        }
+      }
+      return @"span";
+    }
+    return @"span";
   } else if ([style isEqualToNumber:@([InlineCodeStyle getType])]) {
     return @"code";
   } else if ([style isEqualToNumber:@([LinkStyle getType])]) {

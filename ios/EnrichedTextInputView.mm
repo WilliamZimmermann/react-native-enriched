@@ -1301,6 +1301,15 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
     [self removeHighlightAt:start end:end];
+  } else if ([commandName isEqualToString:@"addFontSize"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    double size = [((NSNumber *)args[2]) doubleValue];
+    [self addFontSizeAt:start end:end size:size];
+  } else if ([commandName isEqualToString:@"removeFontSize"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    [self removeFontSizeAt:start end:end];
   } else if ([commandName isEqualToString:@"clearFormatting"]) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
@@ -1813,6 +1822,40 @@ static UIColor *katavParseHexColor(NSString *hex) {
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
   UIColor *color = katavParseHexColor(hexColor);
   [highlightStyle addHighlightAtRange:range color:color];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)addFontSizeAt:(NSInteger)start end:(NSInteger)end size:(double)size {
+  FontSizeStyle *fontSizeStyle =
+      (FontSizeStyle *)stylesDict[@([FontSizeStyle getType])];
+  if (fontSizeStyle == nullptr) {
+    return;
+  }
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
+  NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
+  [fontSizeStyle addFontSizeAtRange:range size:(CGFloat)size];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)removeFontSizeAt:(NSInteger)start end:(NSInteger)end {
+  FontSizeStyle *fontSizeStyle =
+      (FontSizeStyle *)stylesDict[@([FontSizeStyle getType])];
+  if (fontSizeStyle == nullptr) {
+    return;
+  }
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
+  NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
+  [fontSizeStyle removeFontSizeInRange:range];
   [self anyTextMayHaveBeenModified];
 }
 
