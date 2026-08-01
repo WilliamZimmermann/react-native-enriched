@@ -81,6 +81,8 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void setTextAlignment(T view, String alignment);
   void setTextDirection(T view, String direction);
   void addHighlight(T view, int start, int end, String color);
+  void addTextColor(T view, int start, int end, String color);
+  void removeTextColor(T view, int start, int end);
   void removeHighlight(T view, int start, int end);
   void addFontSize(T view, int start, int end, float size);
   void removeFontSize(T view, int start, int end);

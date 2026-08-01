@@ -550,6 +550,23 @@ class EnrichedTextInputViewManager :
     // No-op: nested list outdentation not implemented on Android yet.
   }
 
+  override fun addTextColor(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    color: String?,
+  ) {
+    view?.addTextColor(start, end, color)
+  }
+
+  override fun removeTextColor(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+  ) {
+    view?.removeTextColor(start, end)
+  }
+
   override fun addHighlight(
     view: EnrichedTextInputView?,
     start: Int,

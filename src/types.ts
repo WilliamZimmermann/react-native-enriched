@@ -483,6 +483,10 @@ export interface EnrichedTextInputInstance extends NativeMethods {
    *  HighlightStyle stores it as NSBackgroundColorAttributeName and the
    *  serializer emits `<mark style="background-color:#RRGGBB;">…</mark>`. */
   setHighlight: (start: number, end: number, color: string) => void;
+  /** Foreground (text) colour over [start, end). Serializes to
+   *  `<span style="color:#RRGGBB;">`. */
+  setTextColor: (start: number, end: number, color: string) => void;
+  removeTextColor: (start: number, end: number) => void;
   /** Strips any highlight in the range without touching other attributes. */
   removeHighlight: (start: number, end: number) => void;
   /** Applies a font size (px) over the range. Stored as a marker attribute and

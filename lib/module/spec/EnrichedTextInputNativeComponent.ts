@@ -542,6 +542,17 @@ interface NativeCommands {
     end: Int32,
     color: string
   ) => void;
+  addTextColor: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    color: string
+  ) => void;
+  removeTextColor: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32
+  ) => void;
   removeHighlight: (
     viewRef: React.ElementRef<ComponentType>,
     start: Int32,
@@ -614,6 +625,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'setTextDirection',
     'addHighlight',
     'removeHighlight',
+    'addTextColor',
+    'removeTextColor',
     'addFontSize',
     'removeFontSize',
     'clearFormatting',

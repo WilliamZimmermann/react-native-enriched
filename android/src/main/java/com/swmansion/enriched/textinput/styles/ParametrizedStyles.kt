@@ -7,6 +7,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import com.swmansion.enriched.common.EnrichedConstants
 import com.swmansion.enriched.common.spans.EnrichedHighlightSpan
+import com.swmansion.enriched.common.spans.EnrichedTextColorSpan
 import com.swmansion.enriched.textinput.EnrichedTextInputView
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputLinkSpan
@@ -74,6 +75,47 @@ class ParametrizedStyles(
       safeEnd,
       Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
     )
+
+    view.selection?.validateStyles()
+  }
+
+  /** Apply a foreground colour over [start, end), replacing any already there. */
+  fun setTextColorSpan(
+    start: Int,
+    end: Int,
+    color: String?,
+  ) {
+    if (start >= end || color == null) return
+
+    val parsed =
+      try {
+        Color.parseColor(color)
+      } catch (e: IllegalArgumentException) {
+        return
+      }
+
+    val spannable = view.text as SpannableStringBuilder
+    removeSpansForRange(spannable, start, end, EnrichedTextColorSpan::class.java)
+
+    val (safeStart, safeEnd) = spannable.getSafeSpanBoundaries(start, end)
+    spannable.setSpan(
+      EnrichedTextColorSpan(parsed),
+      safeStart,
+      safeEnd,
+      Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+    )
+
+    view.selection?.validateStyles()
+  }
+
+  fun removeTextColorSpans(
+    start: Int,
+    end: Int,
+  ) {
+    if (start >= end) return
+
+    val spannable = view.text as SpannableStringBuilder
+    removeSpansForRange(spannable, start, end, EnrichedTextColorSpan::class.java)
 
     view.selection?.validateStyles()
   }

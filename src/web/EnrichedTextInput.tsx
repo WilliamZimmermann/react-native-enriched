@@ -394,6 +394,10 @@ export const EnrichedTextInput = ({
       // host app, not in this vendor wrapper.
       setHighlight: (_start: number, _end: number, _color: string) => {},
       removeHighlight: (_start: number, _end: number) => {},
+      // Parity stubs: on web the host app applies colour through its own
+      // TipTap marks, so this wrapper doesn't need to drive it.
+      setTextColor: (_start: number, _end: number, _color: string) => {},
+      removeTextColor: (_start: number, _end: number) => {},
       // Parity stubs, same reasoning as the highlight pair above: on web the
       // host app drives sizing through its own TipTap FontSize mark rather
       // than this wrapper.

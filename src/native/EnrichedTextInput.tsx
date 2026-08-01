@@ -280,6 +280,12 @@ export const EnrichedTextInput = ({
     removeLink: (start: number, end: number) => {
       Commands.removeLink(nullthrows(nativeRef.current), start, end);
     },
+    setTextColor: (start: number, end: number, color: string) => {
+      Commands.addTextColor(nullthrows(nativeRef.current), start, end, color);
+    },
+    removeTextColor: (start: number, end: number) => {
+      Commands.removeTextColor(nullthrows(nativeRef.current), start, end);
+    },
     setHighlight: (start: number, end: number, color: string) => {
       Commands.addHighlight(nullthrows(nativeRef.current), start, end, color);
     },

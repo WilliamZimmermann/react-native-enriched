@@ -964,6 +964,21 @@ class EnrichedTextInputView :
     parametrizedStyles?.removeHighlightSpans(getActualIndex(start), getActualIndex(end))
   }
 
+  fun addTextColor(
+    start: Int,
+    end: Int,
+    color: String?,
+  ) {
+    parametrizedStyles?.setTextColorSpan(getActualIndex(start), getActualIndex(end), color)
+  }
+
+  fun removeTextColor(
+    start: Int,
+    end: Int,
+  ) {
+    parametrizedStyles?.removeTextColorSpans(getActualIndex(start), getActualIndex(end))
+  }
+
   fun addLink(
     start: Int,
     end: Int,

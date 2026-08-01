@@ -228,6 +228,12 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "addHighlight":
         mViewManager.addHighlight(view, args.getInt(0), args.getInt(1), args.getString(2));
         break;
+      case "addTextColor":
+        mViewManager.addTextColor(view, args.getInt(0), args.getInt(1), args.getString(2));
+        break;
+      case "removeTextColor":
+        mViewManager.removeTextColor(view, args.getInt(0), args.getInt(1));
+        break;
       case "removeHighlight":
         mViewManager.removeHighlight(view, args.getInt(0), args.getInt(1));
         break;

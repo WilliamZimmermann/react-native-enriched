@@ -27,6 +27,7 @@ import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
 import com.swmansion.enriched.common.spans.EnrichedStrikeThroughSpan;
 import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
+import com.swmansion.enriched.common.spans.EnrichedTextColorSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnderlineSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnorderedListSpan;
 import com.swmansion.enriched.common.spans.interfaces.EnrichedBlockSpan;
@@ -311,6 +312,11 @@ public class EnrichedParser {
         if (style[j] instanceof EnrichedUnderlineSpan) {
           out.append("<u>");
         }
+        if (style[j] instanceof EnrichedTextColorSpan) {
+          out.append("<span style=\"color:");
+          out.append(((EnrichedTextColorSpan) style[j]).getColorHex());
+          out.append(";\">");
+        }
         if (style[j] instanceof EnrichedHighlightSpan) {
           // Same shape iOS emits and TipTap writes, so a highlighted note
           // round-trips between phone, tablet and web unchanged.
@@ -379,6 +385,9 @@ public class EnrichedParser {
         }
         if (style[j] instanceof EnrichedHighlightSpan) {
           out.append("</mark>");
+        }
+        if (style[j] instanceof EnrichedTextColorSpan) {
+          out.append("</span>");
         }
         if (style[j] instanceof EnrichedUnderlineSpan) {
           out.append("</u>");
