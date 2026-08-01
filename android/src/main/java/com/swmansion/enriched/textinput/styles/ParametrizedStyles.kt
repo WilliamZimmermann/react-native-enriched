@@ -1,10 +1,12 @@
 package com.swmansion.enriched.textinput.styles
 
+import android.graphics.Color
 import android.text.Editable
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import com.swmansion.enriched.common.EnrichedConstants
+import com.swmansion.enriched.common.spans.EnrichedHighlightSpan
 import com.swmansion.enriched.textinput.EnrichedTextInputView
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputLinkSpan
@@ -38,6 +40,54 @@ class ParametrizedStyles(
     }
 
     return true
+  }
+
+  /**
+   * Apply a highlight (text background colour) over [start, end).
+   *
+   * Replaces any highlight already covering the range so re-tapping a swatch
+   * recolours instead of stacking translucent spans.
+   */
+  fun setHighlightSpan(
+    start: Int,
+    end: Int,
+    color: String?,
+  ) {
+    if (start >= end) return
+
+    val parsed =
+      try {
+        Color.parseColor(color ?: "#FFF59D")
+      } catch (e: IllegalArgumentException) {
+        // Unparseable colour from JS — fall back to the same yellow iOS uses
+        // for a bare <mark> rather than dropping the user's action.
+        Color.parseColor("#FFF59D")
+      }
+
+    val spannable = view.text as SpannableStringBuilder
+    removeSpansForRange(spannable, start, end, EnrichedHighlightSpan::class.java)
+
+    val (safeStart, safeEnd) = spannable.getSafeSpanBoundaries(start, end)
+    spannable.setSpan(
+      EnrichedHighlightSpan(parsed),
+      safeStart,
+      safeEnd,
+      Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+    )
+
+    view.selection?.validateStyles()
+  }
+
+  fun removeHighlightSpans(
+    start: Int,
+    end: Int,
+  ) {
+    if (start >= end) return
+
+    val spannable = view.text as SpannableStringBuilder
+    removeSpansForRange(spannable, start, end, EnrichedHighlightSpan::class.java)
+
+    view.selection?.validateStyles()
   }
 
   fun setLinkSpan(

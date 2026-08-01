@@ -1,5 +1,6 @@
 package com.swmansion.enriched.common.parser;
 
+import android.graphics.Color;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
@@ -25,6 +26,7 @@ import com.swmansion.enriched.common.spans.EnrichedLinkSpan;
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
 import com.swmansion.enriched.common.spans.EnrichedStrikeThroughSpan;
+import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnderlineSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnorderedListSpan;
 import com.swmansion.enriched.common.spans.interfaces.EnrichedBlockSpan;
@@ -309,6 +311,13 @@ public class EnrichedParser {
         if (style[j] instanceof EnrichedUnderlineSpan) {
           out.append("<u>");
         }
+        if (style[j] instanceof EnrichedHighlightSpan) {
+          // Same shape iOS emits and TipTap writes, so a highlighted note
+          // round-trips between phone, tablet and web unchanged.
+          out.append("<mark style=\"background-color:");
+          out.append(((EnrichedHighlightSpan) style[j]).getColorHex());
+          out.append(";\">");
+        }
         if (style[j] instanceof EnrichedInlineCodeSpan) {
           out.append("<code>");
         }
@@ -367,6 +376,9 @@ public class EnrichedParser {
         }
         if (style[j] instanceof EnrichedStrikeThroughSpan) {
           out.append("</s>");
+        }
+        if (style[j] instanceof EnrichedHighlightSpan) {
+          out.append("</mark>");
         }
         if (style[j] instanceof EnrichedUnderlineSpan) {
           out.append("</u>");
@@ -582,6 +594,8 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       startCodeBlock(mSpannableStringBuilder);
     } else if (tag.equalsIgnoreCase("a")) {
       startA(mSpannableStringBuilder, attributes);
+    } else if (tag.equalsIgnoreCase("mark")) {
+      start(mSpannableStringBuilder, new Highlight(parseHighlightColor(attributes)));
     } else if (tag.equalsIgnoreCase("u")) {
       start(mSpannableStringBuilder, new Underline());
     } else if (tag.equalsIgnoreCase("s")) {
@@ -648,6 +662,10 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       endCodeBlock(mSpannableStringBuilder, mStyle, mSpanFactory);
     } else if (tag.equalsIgnoreCase("a")) {
       endA(mSpannableStringBuilder, mStyle, mSpanFactory);
+    } else if (tag.equalsIgnoreCase("mark")) {
+      Object open = getLast(mSpannableStringBuilder, Highlight.class);
+      int color = open instanceof Highlight ? ((Highlight) open).color : DEFAULT_HIGHLIGHT_COLOR;
+      end(mSpannableStringBuilder, Highlight.class, new EnrichedHighlightSpan(color));
     } else if (tag.equalsIgnoreCase("u")) {
       end(mSpannableStringBuilder, Underline.class, mSpanFactory.createUnderlineSpan(mStyle));
     } else if (tag.equalsIgnoreCase("s")) {
@@ -883,6 +901,31 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     }
   }
 
+  /** Yellow, matching what iOS uses for a `<mark>` with no colour. */
+  private static final int DEFAULT_HIGHLIGHT_COLOR = 0xFFFFF59D;
+
+  /**
+   * Pull `background-color:#RRGGBB` out of a `<mark>`'s style attribute. Both
+   * iOS and TipTap write that shape; anything else falls back to yellow so the
+   * text still reads as highlighted.
+   */
+  private static int parseHighlightColor(Attributes attributes) {
+    String style = attributes.getValue("", "style");
+    if (style == null) return DEFAULT_HIGHLIGHT_COLOR;
+
+    Matcher matcher = HIGHLIGHT_COLOR_PATTERN.matcher(style);
+    if (!matcher.find()) return DEFAULT_HIGHLIGHT_COLOR;
+
+    try {
+      return Color.parseColor(matcher.group(1));
+    } catch (IllegalArgumentException e) {
+      return DEFAULT_HIGHLIGHT_COLOR;
+    }
+  }
+
+  private static final Pattern HIGHLIGHT_COLOR_PATTERN =
+      Pattern.compile("background-color\\s*:\\s*(#[0-9a-fA-F]{6})");
+
   private static void start(Editable text, Object mark) {
     int len = text.length();
     text.setSpan(mark, len, len, Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
@@ -1028,6 +1071,15 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static class Italic {}
 
   private static class Underline {}
+
+  /** Marker for an open `<mark>`, carrying the colour parsed from its style. */
+  private static class Highlight {
+    final int color;
+
+    Highlight(int color) {
+      this.color = color;
+    }
+  }
 
   private static class Code {}
 

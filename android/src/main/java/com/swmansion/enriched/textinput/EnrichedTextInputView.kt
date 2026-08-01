@@ -949,6 +949,21 @@ class EnrichedTextInputView :
     listStyles?.toggleCheckboxListStyle(checked)
   }
 
+  fun addHighlight(
+    start: Int,
+    end: Int,
+    color: String?,
+  ) {
+    parametrizedStyles?.setHighlightSpan(getActualIndex(start), getActualIndex(end), color)
+  }
+
+  fun removeHighlight(
+    start: Int,
+    end: Int,
+  ) {
+    parametrizedStyles?.removeHighlightSpans(getActualIndex(start), getActualIndex(end))
+  }
+
   fun addLink(
     start: Int,
     end: Int,

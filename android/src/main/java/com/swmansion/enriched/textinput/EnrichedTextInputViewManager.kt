@@ -556,7 +556,7 @@ class EnrichedTextInputViewManager :
     end: Int,
     color: String?,
   ) {
-    // No-op: per-selection highlight spans not implemented on Android yet.
+    view?.addHighlight(start, end, color)
   }
 
   override fun removeHighlight(
@@ -564,7 +564,7 @@ class EnrichedTextInputViewManager :
     start: Int,
     end: Int,
   ) {
-    // No-op: per-selection highlight spans not implemented on Android yet.
+    view?.removeHighlight(start, end)
   }
 
   override fun addFontSize(
