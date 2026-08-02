@@ -913,6 +913,9 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   /** Yellow, matching what iOS uses for a `<mark>` with no colour. */
   private static final int DEFAULT_HIGHLIGHT_COLOR = 0xFFFFF59D;
 
+  /** Box for an image whose markup carries no usable size. */
+  private static final int DEFAULT_IMAGE_WIDTH = 280;
+
   /**
    * Pull `background-color:#RRGGBB` out of a `<mark>`'s style attribute. Both
    * iOS and TipTap write that shape; anything else falls back to yellow so the
@@ -950,16 +953,46 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static <T> void startImg(
       Editable text, Attributes attributes, EnrichedSpanFactory<T> spanFactory) {
     String src = attributes.getValue("", "src");
-    String width = attributes.getValue("", "width");
-    String height = attributes.getValue("", "height");
+
+    // An image with no source renders nothing; skipping it keeps the rest of
+    // the document.
+    if (src == null) {
+      return;
+    }
+
+    int width = parseSize(attributes.getValue("", "width"), DEFAULT_IMAGE_WIDTH);
+    int height = parseSize(attributes.getValue("", "height"), Math.round(width * 3f / 4f));
 
     int len = text.length();
     text.append("￼");
     text.setSpan(
-        spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height)),
+        spanFactory.createImageSpan(src, width, height),
         len,
         text.length(),
         Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+  }
+
+  /**
+   * Image dimension from an HTML attribute.
+   *
+   * This used to be a bare {@code Integer.parseInt}, so a missing attribute
+   * ("s == null") or a decimal — both of which real documents contain — threw
+   * out of the SAX handler and aborted the parse of the WHOLE document. The
+   * caller then fell back to inserting the note as plain text, which turned an
+   * imported page into a wall of raw markup.
+   */
+  private static int parseSize(String value, int fallback) {
+    if (value == null) {
+      return fallback;
+    }
+
+    try {
+      int parsed = Math.round(Float.parseFloat(value.trim()));
+
+      return parsed > 0 ? parsed : fallback;
+    } catch (NumberFormatException e) {
+      return fallback;
+    }
   }
 
   private static void startA(Editable text, Attributes attributes) {
