@@ -574,19 +574,41 @@ class EnrichedTextInputView :
     forceScrollToSelection()
   }
 
-  private fun applyLineSpacing() {
+  /**
+   * Apply the line height one PARAGRAPH at a time.
+   *
+   * This used to be a single span over the whole text. `EnrichedLineHeightSpan`
+   * is a `MetricAffectingSpan`, so spanning the entire document made every
+   * keystroke invalidate the measurement of the entire document: on a long note
+   * that was over a second of layout work per character. Scoped to a paragraph,
+   * an edit only reflows the paragraph being typed in.
+   */
+  fun applyLineSpacing() {
     val spannable = text as? Spannable ?: return
     spannable
       .getSpans(0, spannable.length, EnrichedLineHeightSpan::class.java)
       .forEach { spannable.removeSpan(it) }
 
     val lh = lineHeight ?: return
-    spannable.setSpan(
-      EnrichedLineHeightSpan(lh, allowFontScaling),
-      0,
-      spannable.length,
-      Spannable.SPAN_INCLUSIVE_INCLUSIVE,
-    )
+    val length = spannable.length
+    var start = 0
+
+    while (start <= length) {
+      val newline = spannable.indexOf('\n', start)
+      val end = if (newline < 0) length else newline
+
+      if (end > start) {
+        spannable.setSpan(
+          EnrichedLineHeightSpan(lh, allowFontScaling),
+          start,
+          end,
+          Spannable.SPAN_INCLUSIVE_INCLUSIVE,
+        )
+      }
+
+      if (newline < 0) break
+      start = newline + 1
+    }
   }
 
   fun setFontFamily(family: String?) {

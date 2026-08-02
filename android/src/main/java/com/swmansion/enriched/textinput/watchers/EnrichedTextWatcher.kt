@@ -70,7 +70,23 @@ class EnrichedTextWatcher(
 
     if (view.isDuringTransaction) return
     applyStyles(s)
+    reapplyLineSpacingIfParagraphsChanged(s, startCursorPosition, endCursorPosition)
     view.layoutManager.invalidateLayout()
+  }
+
+  /**
+   * The line-height spans are per paragraph, so a change that adds or removes a
+   * paragraph break has to re-scope them. Typing inside a paragraph does not.
+   */
+  private fun reapplyLineSpacingIfParagraphsChanged(
+    s: Editable,
+    insertedFrom: Int,
+    insertedTo: Int,
+  ) {
+    val inserted = if (insertedTo > insertedFrom) s.subSequence(insertedFrom, insertedTo) else ""
+    val changedParagraphs = inserted.contains('\n') || deletedText.contains('\n')
+
+    if (changedParagraphs) view.applyLineSpacing()
   }
 
   private fun applyStyles(s: Editable) {

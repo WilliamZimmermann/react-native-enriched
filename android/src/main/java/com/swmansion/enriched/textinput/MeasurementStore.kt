@@ -48,9 +48,21 @@ object MeasurementStore {
     val cachedWidth = data[id]?.cachedWidth ?: 0f
     val cachedSize = data[id]?.cachedSize ?: 0L
     val initialized = data[id]?.initialized ?: true
+    val paintParams = PaintParams(paint.typeface, paint.textSize)
+
+    // No width yet means nothing has ever asked this view for a content-driven
+    // height — its height comes from the layout (e.g. `style={{ flex: 1 }}`),
+    // so getMeasureById() is never called and there is no consumer for a size.
+    // Measuring anyway would lay the text out against width 0, wrapping EVERY
+    // character onto its own line: on a long note that is a multi-second
+    // StaticLayout build on the UI thread, twice per keystroke. Just keep the
+    // text so a later measure has it.
+    if (cachedWidth <= 0f) {
+      data[id] = MeasurementParams(initialized, cachedWidth, cachedSize, spannable, paintParams)
+      return false
+    }
 
     val size = measure(cachedWidth, spannable, paint)
-    val paintParams = PaintParams(paint.typeface, paint.textSize)
 
     data[id] = MeasurementParams(initialized, cachedWidth, size, spannable, paintParams)
     return cachedSize != size
