@@ -28,14 +28,6 @@ class ParametrizedStyles(
   var mentionIndicators: Array<String> = emptyArray<String>()
 
   /**
-   * Drop spans of a type covering the range, WITHOUT touching the text.
-   *
-   * [removeSpansForRange] also strips zero-width spaces, which exist to anchor
-   * block styles. Running that for a purely inline style (size, sub/sup) is not
-   * just unnecessary — re-applying over an existing span shifted the indices
-   * and swallowed the selected word out of the serialized HTML.
-   */
-  /**
    * Report the new HTML after an inline style changed.
    *
    * The span watcher only emits for its own `EnrichedInputSpan`s, so applying a

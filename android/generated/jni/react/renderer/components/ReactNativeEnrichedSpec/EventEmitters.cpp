@@ -247,6 +247,23 @@ payload.setProperty(runtime, "rectHeight", event.rectHeight);
 }
 
 
+void EnrichedTextInputViewEventEmitter::onTableCellTap(OnTableCellTap event) const {
+  dispatchEvent("tableCellTap", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "charIndex", event.charIndex);
+payload.setProperty(runtime, "tableIndex", event.tableIndex);
+payload.setProperty(runtime, "row", event.row);
+payload.setProperty(runtime, "col", event.col);
+payload.setProperty(runtime, "x", event.x);
+payload.setProperty(runtime, "y", event.y);
+payload.setProperty(runtime, "width", event.width);
+payload.setProperty(runtime, "height", event.height);
+payload.setProperty(runtime, "colFractions", event.colFractions);
+    return payload;
+  });
+}
+
+
 void EnrichedTextInputViewEventEmitter::onRequestHtmlResult(OnRequestHtmlResult event) const {
   dispatchEvent("requestHtmlResult", [event=std::move(event)](jsi::Runtime &runtime) {
     auto payload = jsi::Object(runtime);

@@ -13,12 +13,14 @@ import com.swmansion.enriched.common.spans.EnrichedBoldSpan;
 import com.swmansion.enriched.common.spans.EnrichedCheckboxListSpan;
 import com.swmansion.enriched.common.spans.EnrichedCodeBlockSpan;
 import com.swmansion.enriched.common.spans.EnrichedDirectionSpan;
+import com.swmansion.enriched.common.spans.EnrichedFontSizeSpan;
 import com.swmansion.enriched.common.spans.EnrichedH1Span;
 import com.swmansion.enriched.common.spans.EnrichedH2Span;
 import com.swmansion.enriched.common.spans.EnrichedH3Span;
 import com.swmansion.enriched.common.spans.EnrichedH4Span;
 import com.swmansion.enriched.common.spans.EnrichedH5Span;
 import com.swmansion.enriched.common.spans.EnrichedH6Span;
+import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
 import com.swmansion.enriched.common.spans.EnrichedImageSpan;
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan;
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan;
@@ -26,8 +28,6 @@ import com.swmansion.enriched.common.spans.EnrichedLinkSpan;
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
 import com.swmansion.enriched.common.spans.EnrichedStrikeThroughSpan;
-import com.swmansion.enriched.common.spans.EnrichedFontSizeSpan;
-import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
 import com.swmansion.enriched.common.spans.EnrichedSubscriptSpan;
 import com.swmansion.enriched.common.spans.EnrichedSuperscriptSpan;
 import com.swmansion.enriched.common.spans.EnrichedTableData;
@@ -491,14 +491,20 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static String currentListDirectionValue = null;
 
   /**
-   * Raw `<table>…</table>` blocks, in source order, and how many have been
-   * consumed.
+   * Raw `
    *
-   * TagSoup hands over tags one at a time, so the original markup is gone by
-   * the time `<table>` arrives. Tables are round-tripped VERBATIM (see
+   * <table>…</table>
+   *
+   * ` blocks, in source order, and how many have been consumed.
+   *
+   * <p>TagSoup hands over tags one at a time, so the original markup is gone by the time `
+   *
+   * <table>` arrives. Tables are round-tripped VERBATIM (see
    * EnrichedTableData), so the source is scanned up front and the converter
    * takes the blocks in order, ignoring every event until the matching
-   * `</table>`.
+   * `</table>
+   *
+   * `.
    */
   private final java.util.List<String> mTableHtml = new java.util.ArrayList<>();
 
@@ -1018,9 +1024,8 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static final int DEFAULT_IMAGE_WIDTH = 280;
 
   /**
-   * Pull `background-color:#RRGGBB` out of a `<mark>`'s style attribute. Both
-   * iOS and TipTap write that shape; anything else falls back to yellow so the
-   * text still reads as highlighted.
+   * Pull `background-color:#RRGGBB` out of a `<mark>`'s style attribute. Both iOS and TipTap write
+   * that shape; anything else falls back to yellow so the text still reads as highlighted.
    */
   private static int parseHighlightColor(Attributes attributes) {
     String style = attributes.getValue("", "style");
@@ -1048,10 +1053,9 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   /**
    * Open a `<span>`.
    *
-   * Colour and size are the two things a span can carry here — the shapes
-   * TipTap writes and iOS emits. A span with neither still pushes a mark, so
-   * that the matching `</span>` closes something and cannot unbalance the
-   * document.
+   * <p>Colour and size are the two things a span can carry here — the shapes TipTap writes and iOS
+   * emits. A span with neither still pushes a mark, so that the matching `</span>` closes something
+   * and cannot unbalance the document.
    */
   private static void startStyledSpan(Editable text, Attributes attributes) {
     String style = attributes.getValue("", "style");
@@ -1142,11 +1146,10 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   /**
    * Image dimension from an HTML attribute.
    *
-   * This used to be a bare {@code Integer.parseInt}, so a missing attribute
-   * ("s == null") or a decimal — both of which real documents contain — threw
-   * out of the SAX handler and aborted the parse of the WHOLE document. The
-   * caller then fell back to inserting the note as plain text, which turned an
-   * imported page into a wall of raw markup.
+   * <p>This used to be a bare {@code Integer.parseInt}, so a missing attribute ("s == null") or a
+   * decimal — both of which real documents contain — threw out of the SAX handler and aborted the
+   * parse of the WHOLE document. The caller then fell back to inserting the note as plain text,
+   * which turned an imported page into a wall of raw markup.
    */
   private static int parseSize(String value, int fallback) {
     if (value == null) {
@@ -1241,9 +1244,8 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   /**
    * Place a table at the caret.
    *
-   * The span replaces a single object character, the way an image does, so the
-   * table occupies one position in the text and the serializer can swap it back
-   * for its raw HTML.
+   * <p>The span replaces a single object character, the way an image does, so the table occupies
+   * one position in the text and the serializer can swap it back for its raw HTML.
    */
   private void startTable() {
     if (mTableIndex >= mTableHtml.size()) return;

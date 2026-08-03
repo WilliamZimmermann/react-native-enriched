@@ -147,6 +147,17 @@ export interface OnChangeSelectionEvent {
     rectWidth: Float;
     rectHeight: Float;
 }
+export interface OnTableCellTapEvent {
+    charIndex: Int32;
+    tableIndex: Int32;
+    row: Int32;
+    col: Int32;
+    x: Float;
+    y: Float;
+    width: Float;
+    height: Float;
+    colFractions: string;
+}
 export interface OnRequestHtmlResultEvent {
     requestId: Int32;
     html: UnsafeMixed;
@@ -370,6 +381,7 @@ export interface NativeProps extends ViewProps {
     onMentionDetected?: DirectEventHandler<OnMentionDetectedInternal>;
     onMention?: DirectEventHandler<OnMentionEvent>;
     onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
+    onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
     onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
     onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
     onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;

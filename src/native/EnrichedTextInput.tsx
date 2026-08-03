@@ -71,6 +71,7 @@ export const EnrichedTextInput = ({
   onChangeMention,
   onEndMention,
   onChangeSelection,
+  onTableCellTap,
   onKeyPress,
   onSubmitEditing,
   returnKeyType,
@@ -296,7 +297,12 @@ export const EnrichedTextInput = ({
       Commands.addFontSize(nullthrows(nativeRef.current), start, end, size);
     },
     toggleScript: (start: number, end: number, superscript: boolean) => {
-      Commands.toggleScript(nullthrows(nativeRef.current), start, end, superscript);
+      Commands.toggleScript(
+        nullthrows(nativeRef.current),
+        start,
+        end,
+        superscript
+      );
     },
     removeFontSize: (start: number, end: number) => {
       Commands.removeFontSize(nullthrows(nativeRef.current), start, end);
@@ -419,6 +425,7 @@ export const EnrichedTextInput = ({
       onMentionDetected={handleMentionDetected}
       onMention={handleMentionEvent}
       onChangeSelection={onChangeSelection}
+      onTableCellTap={onTableCellTap}
       onRequestHtmlResult={handleRequestHtmlResult}
       onInputKeyPress={onKeyPress}
       contextMenuItems={nativeContextMenuItems}

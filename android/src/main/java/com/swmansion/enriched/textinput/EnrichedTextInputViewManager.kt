@@ -29,6 +29,7 @@ import com.swmansion.enriched.textinput.events.OnMentionEvent
 import com.swmansion.enriched.textinput.events.OnPasteImagesEvent
 import com.swmansion.enriched.textinput.events.OnRequestHtmlResultEvent
 import com.swmansion.enriched.textinput.events.OnSubmitEditingEvent
+import com.swmansion.enriched.textinput.events.OnTableCellTapEvent
 import com.swmansion.enriched.textinput.spans.EnrichedSpans
 import com.swmansion.enriched.textinput.styles.HtmlStyle
 import com.swmansion.enriched.textinput.utils.jsonStringToStringMap
@@ -71,6 +72,7 @@ class EnrichedTextInputViewManager :
     map.put(OnMentionDetectedEvent.EVENT_NAME, mapOf("registrationName" to OnMentionDetectedEvent.EVENT_NAME))
     map.put(OnMentionEvent.EVENT_NAME, mapOf("registrationName" to OnMentionEvent.EVENT_NAME))
     map.put(OnChangeSelectionEvent.EVENT_NAME, mapOf("registrationName" to OnChangeSelectionEvent.EVENT_NAME))
+    map.put(OnTableCellTapEvent.EVENT_NAME, mapOf("registrationName" to OnTableCellTapEvent.EVENT_NAME))
     map.put(OnRequestHtmlResultEvent.EVENT_NAME, mapOf("registrationName" to OnRequestHtmlResultEvent.EVENT_NAME))
     map.put(OnInputKeyPressEvent.EVENT_NAME, mapOf("registrationName" to OnInputKeyPressEvent.EVENT_NAME))
     map.put(OnPasteImagesEvent.EVENT_NAME, mapOf("registrationName" to OnPasteImagesEvent.EVENT_NAME))

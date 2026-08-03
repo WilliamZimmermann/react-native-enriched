@@ -358,6 +358,26 @@ export interface OnChangeSelectionEvent {
     rectWidth: number;
     rectHeight: number;
 }
+export interface OnTableCellTapEvent {
+    /** Text-storage location of the tapped table's Object Replacement Character.
+     *  The tap selects this 1-char range; consumers correlate the current
+     *  selection to the tapped table (a table ORC looks like an image ORC). */
+    charIndex: number;
+    /** Ordinal of the tapped table among all tables in the document (0-based) —
+     *  use it to target the matching `<table>` in the serialized HTML. */
+    tableIndex: number;
+    row: number;
+    col: number;
+    /** Tapped cell's frame in the editor view's coordinate space (points).
+     *  Consumers position an inline cell editor over it. */
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    /** The table's rendered column widths as comma-separated fractions
+     *  (e.g. "0.3,0.4,0.3"). Used to place per-column resize handles. */
+    colFractions: string;
+}
 export interface OnKeyPressEvent {
     key: string;
 }
@@ -495,6 +515,10 @@ export interface EnrichedTextInputProps extends Omit<ViewProps, 'children'> {
     onChangeMention?: (e: OnChangeMentionEvent) => void;
     onEndMention?: (indicator: string) => void;
     onChangeSelection?: (e: NativeSyntheticEvent<OnChangeSelectionEvent>) => void;
+    /** Fires when the user taps a cell inside a table. Carries the table ordinal,
+     *  the tapped cell's row/col and the cell's on-screen rect, so the consumer
+     *  can open an inline cell editor over it. */
+    onTableCellTap?: (e: NativeSyntheticEvent<OnTableCellTapEvent>) => void;
     onKeyPress?: (e: NativeSyntheticEvent<OnKeyPressEvent>) => void;
     onSubmitEditing?: (e: NativeSyntheticEvent<OnSubmitEditing>) => void;
     /**

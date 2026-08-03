@@ -1,10 +1,10 @@
 package com.swmansion.enriched.textinput
 
 import com.swmansion.enriched.common.parser.EnrichedSpanFactory
+import com.swmansion.enriched.common.spans.EnrichedImageSpan
 import com.swmansion.enriched.common.spans.EnrichedTableData
 import com.swmansion.enriched.common.spans.EnrichedTableSpan
 import com.swmansion.enriched.common.spans.tableWidth
-import com.swmansion.enriched.common.spans.EnrichedImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputAlignmentSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputBlockQuoteSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputBoldSpan

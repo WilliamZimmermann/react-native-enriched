@@ -14,7 +14,9 @@ import com.swmansion.enriched.common.spans.interfaces.EnrichedInlineSpan
  * is a block, so it always takes the full column rather than sizing to content.
  */
 fun tableWidth(): Int =
-  android.content.res.Resources.getSystem().displayMetrics.widthPixels - TABLE_HORIZONTAL_INSET
+  android.content.res.Resources
+    .getSystem()
+    .displayMetrics.widthPixels - TABLE_HORIZONTAL_INSET
 
 private const val TABLE_HORIZONTAL_INSET = 40
 
@@ -33,6 +35,13 @@ data class EnrichedTableData(
   val colCount: Int,
 )
 
+/** A cell located by [EnrichedTableSpan.cellAt], with its span-local frame. */
+data class EnrichedTableCellHit(
+  val row: Int,
+  val col: Int,
+  val rect: Rect,
+)
+
 /**
  * Draws a table inline in the editor.
  *
@@ -40,8 +49,10 @@ data class EnrichedTableData(
  * because TextKit wants an attachment; a `ReplacementSpan` can paint straight
  * onto the canvas, so there is no bitmap and no scaling to get wrong.
  *
- * Read-only for now, like iOS v1: the grid renders and round-trips, and editing
- * a cell still happens on the surface that has an inline cell editor.
+ * The grid is painted, not laid out as text, so the caret can never sit inside
+ * a cell — the span occupies a single character. Editing a cell therefore works
+ * the way it does on iOS: [cellAt] resolves a touch to a cell + frame, the view
+ * reports it through `onTableCellTap`, and JS floats a real editor over it.
  */
 class EnrichedTableSpan(
   val data: EnrichedTableData,
@@ -107,7 +118,11 @@ class EnrichedTableSpan(
           borderPaint,
         )
 
-        val cell = data.rows.getOrNull(r)?.getOrNull(c).orEmpty()
+        val cell =
+          data.rows
+            .getOrNull(r)
+            ?.getOrNull(c)
+            .orEmpty()
         if (cell.isBlank()) continue
 
         canvas.save()
@@ -116,6 +131,46 @@ class EnrichedTableSpan(
         canvas.restore()
       }
     }
+  }
+
+  /**
+   * Height the span reserved on its line. Zero until the first measure, which
+   * always precedes a touch (the grid has to be on screen to be tapped).
+   */
+  val heightPx: Int
+    get() = measuredHeight
+
+  /** Rendered width, for the caller mapping a touch into span-local space. */
+  val widthPx: Int
+    get() = availableWidth
+
+  /**
+   * The cell containing ([localX], [localY]), given in the span's own space
+   * (origin = the grid's top-left), or null when the touch missed the grid.
+   */
+  fun cellAt(
+    localX: Float,
+    localY: Float,
+  ): EnrichedTableCellHit? {
+    for ((r, row) in cellRects.withIndex()) {
+      for ((c, rect) in row.withIndex()) {
+        if (rect.contains(localX.toInt(), localY.toInt())) {
+          return EnrichedTableCellHit(r, c, rect)
+        }
+      }
+    }
+
+    return null
+  }
+
+  /**
+   * Column widths as fractions of the table width. Even split today; kept as a
+   * list so a future per-column width lands here without changing the event.
+   */
+  fun columnFractions(): List<Float> {
+    val cols = maxOf(data.colCount, 1)
+
+    return List(cols) { 1f / cols }
   }
 
   /**

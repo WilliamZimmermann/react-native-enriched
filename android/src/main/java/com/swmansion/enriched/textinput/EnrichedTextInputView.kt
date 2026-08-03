@@ -42,12 +42,14 @@ import com.swmansion.enriched.common.EnrichedConstants
 import com.swmansion.enriched.common.GumboNormalizer
 import com.swmansion.enriched.common.parser.EnrichedParser
 import com.swmansion.enriched.common.pixelFromSpOrDp
+import com.swmansion.enriched.common.spans.EnrichedTableSpan
 import com.swmansion.enriched.textinput.events.MentionHandler
 import com.swmansion.enriched.textinput.events.OnContextMenuItemPressEvent
 import com.swmansion.enriched.textinput.events.OnInputBlurEvent
 import com.swmansion.enriched.textinput.events.OnInputFocusEvent
 import com.swmansion.enriched.textinput.events.OnRequestHtmlResultEvent
 import com.swmansion.enriched.textinput.events.OnSubmitEditingEvent
+import com.swmansion.enriched.textinput.events.OnTableCellTapEvent
 import com.swmansion.enriched.textinput.spans.EnrichedInputH1Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH2Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH3Span
@@ -140,6 +142,11 @@ class EnrichedTextInputView :
   private var typefaceDirty = false
   private var didAttachToWindow = false
   private var detectScrollMovement = false
+
+  // Where the current gesture started, so ACTION_UP can tell a tap (which may
+  // land on a table cell) from a scroll or a drag-select.
+  private var touchDownX = 0f
+  private var touchDownY = 0f
   private var fontFamily: String? = null
   private var fontStyle: Int = ReactConstants.UNSET
   private var fontWeight: Int = ReactConstants.UNSET
@@ -288,6 +295,8 @@ class EnrichedTextInputView :
   override fun onTouchEvent(ev: MotionEvent): Boolean {
     when (ev.action) {
       MotionEvent.ACTION_DOWN -> {
+        touchDownX = ev.x
+        touchDownY = ev.y
         detectScrollMovement = true
         // Disallow parent views to intercept touch events, until we can detect if we should be
         // capturing these touches or not.
@@ -307,10 +316,100 @@ class EnrichedTextInputView :
           detectScrollMovement = false
         }
       }
+
+      MotionEvent.ACTION_UP -> {
+        // A tap (not a scroll, not a long press) that landed on a table cell.
+        // Reported after super.onTouchEvent so the caret has already moved onto
+        // the table's character — JS matches that selection to `charIndex`.
+        val slop =
+          android.view.ViewConfiguration
+            .get(context)
+            .scaledTouchSlop
+        if (
+          kotlin.math.abs(ev.x - touchDownX) <= slop &&
+          kotlin.math.abs(ev.y - touchDownY) <= slop
+        ) {
+          val handled = super.onTouchEvent(ev)
+          emitTableCellTapAt(ev.x, ev.y)
+          return handled
+        }
+      }
     }
 
     return super.onTouchEvent(ev)
   }
+
+  /**
+   * Resolve a touch to a table cell and report it.
+   *
+   * A table is one `EnrichedTableSpan` over a single character, so the layout
+   * gives us where the grid was painted and the span itself resolves the cell.
+   * Coordinates go out in dp, in the view's own space, which is what a JS
+   * overlay positions against.
+   */
+  private fun emitTableCellTapAt(
+    touchX: Float,
+    touchY: Float,
+  ) {
+    val spannable = text as? Spannable ?: return
+    val textLayout = layout ?: return
+
+    val xInText = touchX - totalPaddingLeft + scrollX
+    val yInText = touchY - totalPaddingTop + scrollY
+    val line = textLayout.getLineForVertical(yInText.toInt())
+    val spans =
+      spannable.getSpans(
+        textLayout.getLineStart(line),
+        textLayout.getLineEnd(line),
+        EnrichedTableSpan::class.java,
+      )
+
+    for (span in spans) {
+      val start = spannable.getSpanStart(span)
+      if (start < 0) continue
+
+      val spanLine = textLayout.getLineForOffset(start)
+      val left = textLayout.getPrimaryHorizontal(start)
+      // getSize() reports the grid as ascent-only, so it is painted upwards
+      // from the baseline.
+      val top = textLayout.getLineBaseline(spanLine) - span.heightPx
+      val hit = span.cellAt(xInText - left, yInText - top) ?: continue
+
+      val density = resources.displayMetrics.density
+      val viewX = left + hit.rect.left + totalPaddingLeft - scrollX
+      val viewY = top + hit.rect.top + totalPaddingTop - scrollY
+      val context = context as ReactContext
+      val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(context, id)
+
+      dispatcher?.dispatchEvent(
+        OnTableCellTapEvent(
+          UIManagerHelper.getSurfaceId(context),
+          id,
+          getVisibleIndex(start),
+          tableOrdinalAt(spannable, start),
+          hit.row,
+          hit.col,
+          viewX / density,
+          viewY / density,
+          hit.rect.width() / density,
+          hit.rect.height() / density,
+          span.columnFractions().joinToString(",") { it.toString() },
+        ),
+      )
+
+      return
+    }
+  }
+
+  /** How many tables precede the one starting at [start] — the ordinal JS uses
+   *  to find the matching `<table>` in the serialized HTML. */
+  private fun tableOrdinalAt(
+    spannable: Spannable,
+    start: Int,
+  ): Int =
+    spannable
+      .getSpans(0, start, EnrichedTableSpan::class.java)
+      .count { spannable.getSpanStart(it) < start }
 
   override fun canScrollVertically(direction: Int): Boolean = scrollEnabled
 
@@ -488,6 +587,22 @@ class EnrichedTextInputView :
     }
 
     return actualIndex
+  }
+
+  // Helper: the inverse of getActualIndex — how many visible (non-ZWSP)
+  // characters precede this position in the buffer. Selections cross to JS in
+  // visible coordinates, so anything reporting an offset has to convert.
+  private fun getVisibleIndex(actualIndex: Int): Int {
+    val currentText = text ?: return actualIndex
+    var visibleCount = 0
+
+    for (i in 0 until minOf(actualIndex, currentText.length)) {
+      if (currentText[i] != EnrichedConstants.ZWS) {
+        visibleCount++
+      }
+    }
+
+    return visibleCount
   }
 
   /**
@@ -1114,7 +1229,11 @@ class EnrichedTextInputView :
 
   // Serialize the [start, end) range to an HTML fragment, returned via the same
   // onRequestHtmlResult event keyed by requestId.
-  fun requestSelectionHTML(requestId: Int, visibleStart: Int, visibleEnd: Int) {
+  fun requestSelectionHTML(
+    requestId: Int,
+    visibleStart: Int,
+    visibleEnd: Int,
+  ) {
     val html =
       try {
         val spannable = text as Spannable
@@ -1134,7 +1253,11 @@ class EnrichedTextInputView :
 
   // Replace the [start, end) range with a parsed HTML fragment, preserving the
   // fragment's formatting. Mirrors the rich-paste merge path.
-  fun replaceSelectionWithHtml(visibleStart: Int, visibleEnd: Int, html: String) {
+  fun replaceSelectionWithHtml(
+    visibleStart: Int,
+    visibleEnd: Int,
+    html: String,
+  ) {
     val currentText = text as Spannable
     val start = getActualIndex(visibleStart).coerceIn(0, currentText.length)
     val end = getActualIndex(visibleEnd).coerceIn(start, currentText.length)
