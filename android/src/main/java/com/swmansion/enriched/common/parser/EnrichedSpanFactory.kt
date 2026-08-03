@@ -19,6 +19,8 @@ import com.swmansion.enriched.common.spans.EnrichedLinkSpan
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan
 import com.swmansion.enriched.common.spans.EnrichedStrikeThroughSpan
+import com.swmansion.enriched.common.spans.EnrichedTableData
+import com.swmansion.enriched.common.spans.EnrichedTableSpan
 import com.swmansion.enriched.common.spans.EnrichedUnderlineSpan
 import com.swmansion.enriched.common.spans.EnrichedUnorderedListSpan
 
@@ -54,6 +56,13 @@ interface EnrichedSpanFactory<T> {
     width: Int,
     height: Int,
   ): EnrichedImageSpan
+
+  /** The raw HTML is kept so the table round-trips byte for byte. */
+  fun createTableSpan(
+    rawHtml: String,
+    data: EnrichedTableData,
+    style: T,
+  ): EnrichedTableSpan
 
   fun createH1Span(style: T): EnrichedH1Span
 

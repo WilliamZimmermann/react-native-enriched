@@ -1,6 +1,9 @@
 package com.swmansion.enriched.textinput
 
 import com.swmansion.enriched.common.parser.EnrichedSpanFactory
+import com.swmansion.enriched.common.spans.EnrichedTableData
+import com.swmansion.enriched.common.spans.EnrichedTableSpan
+import com.swmansion.enriched.common.spans.tableWidth
 import com.swmansion.enriched.common.spans.EnrichedImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputAlignmentSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputBlockQuoteSpan
@@ -57,6 +60,12 @@ class EnrichedTextInputSpannableFactory : EnrichedSpanFactory<HtmlStyle> {
     width: Int,
     height: Int,
   ): EnrichedImageSpan = EnrichedInputImageSpan.createEnrichedImageSpan(source, width, height)
+
+  override fun createTableSpan(
+    rawHtml: String,
+    data: EnrichedTableData,
+    style: HtmlStyle,
+  ) = EnrichedTableSpan(data, tableWidth())
 
   override fun createH1Span(style: HtmlStyle) = EnrichedInputH1Span(style)
 

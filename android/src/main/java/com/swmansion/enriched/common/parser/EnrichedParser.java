@@ -30,6 +30,8 @@ import com.swmansion.enriched.common.spans.EnrichedFontSizeSpan;
 import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
 import com.swmansion.enriched.common.spans.EnrichedSubscriptSpan;
 import com.swmansion.enriched.common.spans.EnrichedSuperscriptSpan;
+import com.swmansion.enriched.common.spans.EnrichedTableData;
+import com.swmansion.enriched.common.spans.EnrichedTableSpan;
 import com.swmansion.enriched.common.spans.EnrichedTextColorSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnderlineSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnorderedListSpan;
@@ -98,7 +100,12 @@ public class EnrichedParser {
     // Replace empty <p> tags (with or without style attributes) with <br>
     String normalizedHtml = normalizedBlockQuote.replaceAll("<p[^>]*></p>", "<br>");
 
-    return "<html>\n" + normalizedHtml + "</html>";
+    // A table stands on its own. It rides in the text as a single object
+    // character, so it comes out wrapped in the paragraph that held it.
+    String normalizedTables =
+        normalizedHtml.replaceAll("<p[^>]*>\\s*(<table[\\s\\S]*?</table>)\\s*</p>", "$1");
+
+    return "<html>\n" + normalizedTables + "</html>";
   }
 
   public static String toHtmlWithDefault(CharSequence text) {
@@ -370,6 +377,11 @@ public class EnrichedParser {
 
           out.append(">");
         }
+        if (style[j] instanceof EnrichedTableSpan) {
+          // Verbatim: the table was never decomposed, so nothing to rebuild.
+          out.append(((EnrichedTableSpan) style[j]).getData().getRawHtml());
+          i = next;
+        }
         if (style[j] instanceof EnrichedImageSpan) {
           out.append("<img src=\"");
           out.append(((EnrichedImageSpan) style[j]).getSource());
@@ -478,6 +490,49 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static String currentListAlignmentCssValue = null;
   private static String currentListDirectionValue = null;
 
+  /**
+   * Raw `<table>…</table>` blocks, in source order, and how many have been
+   * consumed.
+   *
+   * TagSoup hands over tags one at a time, so the original markup is gone by
+   * the time `<table>` arrives. Tables are round-tripped VERBATIM (see
+   * EnrichedTableData), so the source is scanned up front and the converter
+   * takes the blocks in order, ignoring every event until the matching
+   * `</table>`.
+   */
+  private final java.util.List<String> mTableHtml = new java.util.ArrayList<>();
+
+  private int mTableIndex = 0;
+  private int mTableDepth = 0;
+
+  private static final Pattern TABLE_PATTERN =
+      Pattern.compile("<table\\b[^>]*>[\\s\\S]*?</table>", Pattern.CASE_INSENSITIVE);
+
+  private static final Pattern TABLE_ROW_PATTERN =
+      Pattern.compile("<tr\\b[^>]*>([\\s\\S]*?)</tr>", Pattern.CASE_INSENSITIVE);
+
+  private static final Pattern TABLE_CELL_PATTERN =
+      Pattern.compile("<(?:td|th)\\b[^>]*>([\\s\\S]*?)</(?:td|th)>", Pattern.CASE_INSENSITIVE);
+
+  /** Split a raw table into its cells, keeping each cell's inner HTML. */
+  static EnrichedTableData buildTableData(String rawHtml) {
+    java.util.List<java.util.List<String>> rows = new java.util.ArrayList<>();
+    int colCount = 0;
+
+    Matcher rowMatcher = TABLE_ROW_PATTERN.matcher(rawHtml);
+    while (rowMatcher.find()) {
+      java.util.List<String> cells = new java.util.ArrayList<>();
+      Matcher cellMatcher = TABLE_CELL_PATTERN.matcher(rowMatcher.group(1));
+      while (cellMatcher.find()) {
+        cells.add(cellMatcher.group(1));
+      }
+      if (cells.size() > colCount) colCount = cells.size();
+      rows.add(cells);
+    }
+
+    return new EnrichedTableData(rawHtml, rows, colCount);
+  }
+
   private static final Pattern CSS_ALIGNMENT_PATTERN =
       Pattern.compile("text-align\\s*:\\s*(left|center|right)", Pattern.CASE_INSENSITIVE);
 
@@ -517,6 +572,13 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     mSpannableStringBuilder = new SpannableStringBuilder();
     mReader = parser;
     mSpanFactory = spanFactory;
+
+    if (source != null) {
+      Matcher tableMatcher = TABLE_PATTERN.matcher(source);
+      while (tableMatcher.find()) {
+        mTableHtml.add(tableMatcher.group());
+      }
+    }
   }
 
   public Spanned convert() {
@@ -1151,14 +1213,59 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   public void endPrefixMapping(String prefix) {}
 
   public void startElement(String uri, String localName, String qName, Attributes attributes) {
+    if (localName.equalsIgnoreCase("table")) {
+      mTableDepth++;
+      if (mTableDepth == 1) {
+        startTable();
+        return;
+      }
+    }
+
+    // Everything inside a table is already captured in its raw HTML.
+    if (mTableDepth > 0) return;
+
     handleStartTag(localName, attributes);
   }
 
   public void endElement(String uri, String localName, String qName) {
+    if (localName.equalsIgnoreCase("table")) {
+      if (mTableDepth > 0) mTableDepth--;
+      return;
+    }
+
+    if (mTableDepth > 0) return;
+
     handleEndTag(localName);
   }
 
+  /**
+   * Place a table at the caret.
+   *
+   * The span replaces a single object character, the way an image does, so the
+   * table occupies one position in the text and the serializer can swap it back
+   * for its raw HTML.
+   */
+  private void startTable() {
+    if (mTableIndex >= mTableHtml.size()) return;
+
+    String rawHtml = mTableHtml.get(mTableIndex++);
+    EnrichedTableData data = buildTableData(rawHtml);
+
+    if (data.getRows().isEmpty()) return;
+
+    isEmptyTag = false;
+    int len = mSpannableStringBuilder.length();
+    mSpannableStringBuilder.append("\uFFFC");
+    mSpannableStringBuilder.setSpan(
+        mSpanFactory.createTableSpan(rawHtml, data, mStyle),
+        len,
+        mSpannableStringBuilder.length(),
+        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+  }
+
   public void characters(char[] ch, int start, int length) {
+    if (mTableDepth > 0) return;
+
     StringBuilder sb = new StringBuilder();
 
     /*

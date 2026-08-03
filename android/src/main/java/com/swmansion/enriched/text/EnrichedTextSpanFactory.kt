@@ -1,6 +1,10 @@
 package com.swmansion.enriched.text
 
+import android.content.res.Resources
 import com.swmansion.enriched.common.parser.EnrichedSpanFactory
+import com.swmansion.enriched.common.spans.EnrichedTableData
+import com.swmansion.enriched.common.spans.EnrichedTableSpan
+import com.swmansion.enriched.common.spans.tableWidth
 import com.swmansion.enriched.text.spans.EnrichedTextAlignmentSpan
 import com.swmansion.enriched.text.spans.EnrichedTextBlockQuoteSpan
 import com.swmansion.enriched.text.spans.EnrichedTextBoldSpan
@@ -55,6 +59,12 @@ class EnrichedTextSpanFactory : EnrichedSpanFactory<EnrichedTextStyle> {
     width: Int,
     height: Int,
   ) = EnrichedTextImageSpan.createEnrichedImageSpan(source, width, height)
+
+  override fun createTableSpan(
+    rawHtml: String,
+    data: EnrichedTableData,
+    style: EnrichedTextStyle,
+  ) = EnrichedTableSpan(data, tableWidth())
 
   override fun createH1Span(style: EnrichedTextStyle) = EnrichedTextH1Span(style)
 
