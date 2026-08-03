@@ -185,6 +185,10 @@ export interface HtmlStyle {
         gapWidth?: number;
         color?: ColorValue;
     };
+    table?: {
+        /** Fill behind the header row's cells. */
+        headerBackgroundColor?: ColorValue;
+    };
     codeblock?: {
         color?: ColorValue;
         borderRadius?: number;

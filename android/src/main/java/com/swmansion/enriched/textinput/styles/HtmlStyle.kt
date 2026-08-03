@@ -60,6 +60,7 @@ class HtmlStyle : EnrichedStyle {
   override var ulCheckboxMarginLeft: Int = 24
   override var ulCheckboxBoxColor: Int = Color.BLACK
 
+  override var tableHeaderBackgroundColor: Int? = null
   override var aColor: Int = Color.BLACK
   override var aUnderline: Boolean = true
 
@@ -131,6 +132,9 @@ class HtmlStyle : EnrichedStyle {
     ulCheckboxGapWidth = parseFloat(ulCheckboxStyle, "gapWidth").toInt()
     ulCheckboxMarginLeft = parseFloat(ulCheckboxStyle, "marginLeft").toInt()
     ulCheckboxBoxColor = parseColor(ulCheckboxStyle, "boxColor")
+
+    val tableStyle = style.getMap("table")
+    tableHeaderBackgroundColor = parseOptionalColor(tableStyle, "headerBackgroundColor")
 
     val aStyle = style.getMap("a")
     aColor = parseColor(aStyle, "color")
@@ -307,6 +311,7 @@ class HtmlStyle : EnrichedStyle {
       ulCheckboxMarginLeft == other.ulCheckboxMarginLeft &&
       ulCheckboxBoxColor == other.ulCheckboxBoxColor &&
 
+      tableHeaderBackgroundColor == other.tableHeaderBackgroundColor &&
       aColor == other.aColor &&
       aUnderline == other.aUnderline &&
 
@@ -354,6 +359,7 @@ class HtmlStyle : EnrichedStyle {
     result = 31 * result + ulCheckboxMarginLeft.hashCode()
     result = 31 * result + ulCheckboxBoxColor.hashCode()
 
+    result = 31 * result + tableHeaderBackgroundColor.hashCode()
     result = 31 * result + aColor.hashCode()
     result = 31 * result + aUnderline.hashCode()
 

@@ -39,6 +39,11 @@ interface EnrichedStyle {
   val ulCheckboxMarginLeft: Int
   val ulCheckboxBoxColor: Int
 
+  // Tables
+
+  /** Fill behind the header row's cells. Null leaves it unfilled. */
+  val tableHeaderBackgroundColor: Int?
+
   // Links
   val aColor: Int
   val aUnderline: Boolean

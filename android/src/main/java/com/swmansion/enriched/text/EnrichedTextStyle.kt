@@ -45,6 +45,7 @@ data class EnrichedTextStyle(
   override val ulCheckboxGapWidth: Int,
   override val ulCheckboxMarginLeft: Int,
   // Links
+  override val tableHeaderBackgroundColor: Int?,
   override val aColor: Int,
   override val aUnderline: Boolean,
   val aPressColor: Int,
@@ -75,6 +76,7 @@ data class EnrichedTextStyle(
       val orderedList = map.getMap("ol")
       val unorderedList = map.getMap("ul")
       val checkboxList = map.getMap("ulCheckbox")
+      val table = map.getMap("table")
       val link = map.getMap("a")
       val codeblock = map.getMap("codeblock")
       val inlineCode = map.getMap("code")
@@ -109,6 +111,7 @@ data class EnrichedTextStyle(
         ulCheckboxBoxSize = parseFloat(checkboxList, "boxSize", allowFontScaling).toInt(),
         ulCheckboxGapWidth = parseFloat(checkboxList, "gapWidth", allowFontScaling).toInt(),
         ulCheckboxMarginLeft = parseFloat(checkboxList, "marginLeft", allowFontScaling).toInt(),
+        tableHeaderBackgroundColor = parseOptionalColor(context, table, "headerBackgroundColor"),
         aColor = parseColor(context, link, "color"),
         aUnderline = parseIsUnderline(link),
         aPressColor = parseColor(context, link, "pressColor"),

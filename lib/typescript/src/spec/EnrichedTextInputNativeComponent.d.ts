@@ -319,6 +319,9 @@ export interface HtmlStyleInternal {
         gapWidth?: Float;
         color?: ColorValue;
     };
+    table?: {
+        headerBackgroundColor?: ColorValue;
+    };
     codeblock?: {
         color?: ColorValue;
         borderRadius?: Float;

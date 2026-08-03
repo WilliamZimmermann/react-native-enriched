@@ -57,6 +57,8 @@ data class EnrichedTableCellHit(
 class EnrichedTableSpan(
   val data: EnrichedTableData,
   private val availableWidth: Int,
+  /** Fill behind the first row, matching the read-only renderer. Null = none. */
+  private val headerBackgroundColor: Int? = null,
 ) : ReplacementSpan(),
   EnrichedInlineSpan {
   /** Cell rectangles in the span's own coordinate space, row-major. */
@@ -69,6 +71,11 @@ class EnrichedTableSpan(
     Paint(Paint.ANTI_ALIAS_FLAG).apply {
       style = Paint.Style.STROKE
       strokeWidth = BORDER_WIDTH
+    }
+
+  private val headerPaint =
+    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+      style = Paint.Style.FILL
     }
 
   override fun getSize(
@@ -110,6 +117,18 @@ class EnrichedTableSpan(
 
     for ((r, row) in cellRects.withIndex()) {
       for ((c, rect) in row.withIndex()) {
+        // The header row is filled first so the border draws over its edge.
+        if (r == 0 && headerBackgroundColor != null) {
+          headerPaint.color = headerBackgroundColor
+          canvas.drawRect(
+            x + rect.left,
+            originY + rect.top,
+            x + rect.right,
+            originY + rect.bottom,
+            headerPaint,
+          )
+        }
+
         canvas.drawRect(
           x + rect.left,
           originY + rect.top,
@@ -235,18 +254,33 @@ class EnrichedTableSpan(
    * paints plain text — rendering marks inside a cell is what the inline cell
    * editor is for.
    */
-  private fun stripTags(html: String): String =
-    html
-      .replace(Regex("<[^>]*>"), "")
-      .replace("&nbsp;", " ")
-      .replace("&amp;", "&")
+  private fun stripTags(html: String): String = decodeEntities(html.replace(Regex("<[^>]*>"), "")).trim()
+
+  /**
+   * Decode the entities a cell's HTML can carry.
+   *
+   * The editor escapes every non-ASCII character NUMERICALLY, so a cell typed
+   * as "Cabeçalho" round-trips as `Cabe&#231;alho` — which is what the grid
+   * painted, character for character, before this decoded them.
+   */
+  private fun decodeEntities(text: String): String =
+    NUMERIC_ENTITY
+      .replace(text) { match ->
+        val (hex, digits) = match.destructured
+        val code = if (hex.isNotEmpty()) hex.toIntOrNull(16) else digits.toIntOrNull()
+        code?.let { String(Character.toChars(it)) } ?: match.value
+      }.replace("&nbsp;", " ")
       .replace("&lt;", "<")
       .replace("&gt;", ">")
-      .replace("&#39;", "'")
       .replace("&quot;", "\"")
-      .trim()
+      .replace("&apos;", "'")
+      // Last, so an escaped "&amp;lt;" does not become a tag-looking "<".
+      .replace("&amp;", "&")
 
   companion object {
+    /** `&#233;` or `&#xe9;` — hex in group 1, decimal in group 2. */
+    private val NUMERIC_ENTITY = Regex("&#(?:x([0-9a-fA-F]+)|(\\d+));")
+
     private const val BORDER_WIDTH = 1.5f
     private const val CELL_PADDING = 10
     private const val MIN_ROW_HEIGHT = 44

@@ -303,6 +303,39 @@ static inline folly::dynamic toDynamic(const EnrichedTextInputViewHtmlStyleBlock
 }
 #endif
 
+struct EnrichedTextInputViewHtmlStyleTableStruct {
+  SharedColor headerBackgroundColor{};
+
+#ifdef RN_SERIALIZABLE_STATE
+  bool operator==(const EnrichedTextInputViewHtmlStyleTableStruct&) const = default;
+
+  folly::dynamic toDynamic() const {
+    folly::dynamic result = folly::dynamic::object();
+    result["headerBackgroundColor"] = ::facebook::react::toDynamic(headerBackgroundColor);
+    return result;
+  }
+#endif
+};
+
+static inline void fromRawValue(const PropsParserContext& context, const RawValue &value, EnrichedTextInputViewHtmlStyleTableStruct &result) {
+  auto map = (std::unordered_map<std::string, RawValue>)value;
+
+  auto tmp_headerBackgroundColor = map.find("headerBackgroundColor");
+  if (tmp_headerBackgroundColor != map.end()) {
+    fromRawValue(context, tmp_headerBackgroundColor->second, result.headerBackgroundColor);
+  }
+}
+
+static inline std::string toString(const EnrichedTextInputViewHtmlStyleTableStruct &value) {
+  return "[Object EnrichedTextInputViewHtmlStyleTableStruct]";
+}
+
+#ifdef RN_SERIALIZABLE_STATE
+static inline folly::dynamic toDynamic(const EnrichedTextInputViewHtmlStyleTableStruct &value) {
+  return value.toDynamic();
+}
+#endif
+
 struct EnrichedTextInputViewHtmlStyleCodeblockStruct {
   SharedColor color{};
   Float borderRadius{0.0};
@@ -587,6 +620,7 @@ struct EnrichedTextInputViewHtmlStyleStruct {
   EnrichedTextInputViewHtmlStyleH5Struct h5{};
   EnrichedTextInputViewHtmlStyleH6Struct h6{};
   EnrichedTextInputViewHtmlStyleBlockquoteStruct blockquote{};
+  EnrichedTextInputViewHtmlStyleTableStruct table{};
   EnrichedTextInputViewHtmlStyleCodeblockStruct codeblock{};
   EnrichedTextInputViewHtmlStyleCodeStruct code{};
   EnrichedTextInputViewHtmlStyleAStruct a{};
@@ -607,6 +641,7 @@ struct EnrichedTextInputViewHtmlStyleStruct {
     result["h5"] = ::facebook::react::toDynamic(h5);
     result["h6"] = ::facebook::react::toDynamic(h6);
     result["blockquote"] = ::facebook::react::toDynamic(blockquote);
+    result["table"] = ::facebook::react::toDynamic(table);
     result["codeblock"] = ::facebook::react::toDynamic(codeblock);
     result["code"] = ::facebook::react::toDynamic(code);
     result["a"] = ::facebook::react::toDynamic(a);
@@ -649,6 +684,10 @@ static inline void fromRawValue(const PropsParserContext& context, const RawValu
   auto tmp_blockquote = map.find("blockquote");
   if (tmp_blockquote != map.end()) {
     fromRawValue(context, tmp_blockquote->second, result.blockquote);
+  }
+  auto tmp_table = map.find("table");
+  if (tmp_table != map.end()) {
+    fromRawValue(context, tmp_table->second, result.table);
   }
   auto tmp_codeblock = map.find("codeblock");
   if (tmp_codeblock != map.end()) {

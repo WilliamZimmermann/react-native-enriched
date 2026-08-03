@@ -362,6 +362,10 @@ export interface HtmlStyleInternal {
     gapWidth?: Float;
     color?: ColorValue;
   };
+  table?: {
+    // Fill behind the header row's cells.
+    headerBackgroundColor?: ColorValue;
+  };
   codeblock?: {
     color?: ColorValue;
     borderRadius?: Float;

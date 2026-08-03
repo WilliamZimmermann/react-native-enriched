@@ -65,7 +65,7 @@ class EnrichedTextInputSpannableFactory : EnrichedSpanFactory<HtmlStyle> {
     rawHtml: String,
     data: EnrichedTableData,
     style: HtmlStyle,
-  ) = EnrichedTableSpan(data, tableWidth())
+  ) = EnrichedTableSpan(data, tableWidth(), style.tableHeaderBackgroundColor)
 
   override fun createH1Span(style: HtmlStyle) = EnrichedInputH1Span(style)
 

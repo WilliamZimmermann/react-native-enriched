@@ -64,7 +64,7 @@ class EnrichedTextSpanFactory : EnrichedSpanFactory<EnrichedTextStyle> {
     rawHtml: String,
     data: EnrichedTableData,
     style: EnrichedTextStyle,
-  ) = EnrichedTableSpan(data, tableWidth())
+  ) = EnrichedTableSpan(data, tableWidth(), style.tableHeaderBackgroundColor)
 
   override fun createH1Span(style: EnrichedTextStyle) = EnrichedTextH1Span(style)
 
