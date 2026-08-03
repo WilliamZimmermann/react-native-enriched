@@ -1001,6 +1001,29 @@ class EnrichedTextInputView :
     parametrizedStyles?.removeTextColorSpans(getActualIndex(start), getActualIndex(end))
   }
 
+  fun addFontSize(
+    start: Int,
+    end: Int,
+    size: Float,
+  ) {
+    parametrizedStyles?.setFontSizeSpan(getActualIndex(start), getActualIndex(end), size)
+  }
+
+  fun removeFontSize(
+    start: Int,
+    end: Int,
+  ) {
+    parametrizedStyles?.removeFontSizeSpans(getActualIndex(start), getActualIndex(end))
+  }
+
+  fun toggleScript(
+    start: Int,
+    end: Int,
+    superscript: Boolean,
+  ) {
+    parametrizedStyles?.toggleScriptSpan(getActualIndex(start), getActualIndex(end), superscript)
+  }
+
   fun addLink(
     start: Int,
     end: Int,

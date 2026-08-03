@@ -243,6 +243,9 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "removeFontSize":
         mViewManager.removeFontSize(view, args.getInt(0), args.getInt(1));
         break;
+      case "toggleScript":
+        mViewManager.toggleScript(view, args.getInt(0), args.getInt(1), args.getBoolean(2));
+        break;
       case "clearFormatting":
         mViewManager.clearFormatting(view, args.getInt(0), args.getInt(1));
         break;

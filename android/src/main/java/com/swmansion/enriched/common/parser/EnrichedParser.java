@@ -26,7 +26,10 @@ import com.swmansion.enriched.common.spans.EnrichedLinkSpan;
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
 import com.swmansion.enriched.common.spans.EnrichedStrikeThroughSpan;
+import com.swmansion.enriched.common.spans.EnrichedFontSizeSpan;
 import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
+import com.swmansion.enriched.common.spans.EnrichedSubscriptSpan;
+import com.swmansion.enriched.common.spans.EnrichedSuperscriptSpan;
 import com.swmansion.enriched.common.spans.EnrichedTextColorSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnderlineSpan;
 import com.swmansion.enriched.common.spans.EnrichedUnorderedListSpan;
@@ -317,6 +320,18 @@ public class EnrichedParser {
           out.append(((EnrichedTextColorSpan) style[j]).getColorHex());
           out.append(";\">");
         }
+        if (style[j] instanceof EnrichedFontSizeSpan) {
+          // TipTap's FontSize mark shape, also what iOS emits.
+          out.append("<span style=\"font-size:");
+          out.append(((EnrichedFontSizeSpan) style[j]).getSizeCss());
+          out.append("px;\">");
+        }
+        if (style[j] instanceof EnrichedSubscriptSpan) {
+          out.append("<sub>");
+        }
+        if (style[j] instanceof EnrichedSuperscriptSpan) {
+          out.append("<sup>");
+        }
         if (style[j] instanceof EnrichedHighlightSpan) {
           // Same shape iOS emits and TipTap writes, so a highlighted note
           // round-trips between phone, tablet and web unchanged.
@@ -388,6 +403,15 @@ public class EnrichedParser {
         }
         if (style[j] instanceof EnrichedTextColorSpan) {
           out.append("</span>");
+        }
+        if (style[j] instanceof EnrichedFontSizeSpan) {
+          out.append("</span>");
+        }
+        if (style[j] instanceof EnrichedSubscriptSpan) {
+          out.append("</sub>");
+        }
+        if (style[j] instanceof EnrichedSuperscriptSpan) {
+          out.append("</sup>");
         }
         if (style[j] instanceof EnrichedUnderlineSpan) {
           out.append("</u>");
@@ -605,6 +629,15 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       startA(mSpannableStringBuilder, attributes);
     } else if (tag.equalsIgnoreCase("mark")) {
       start(mSpannableStringBuilder, new Highlight(parseHighlightColor(attributes)));
+    } else if (tag.equalsIgnoreCase("span")) {
+      // A styled <span> carries colour and/or size. Anything else is a plain
+      // wrapper and contributes no span, but still has to push a mark so the
+      // closing tag stays balanced.
+      startStyledSpan(mSpannableStringBuilder, attributes);
+    } else if (tag.equalsIgnoreCase("sub")) {
+      start(mSpannableStringBuilder, new Subscript());
+    } else if (tag.equalsIgnoreCase("sup")) {
+      start(mSpannableStringBuilder, new Superscript());
     } else if (tag.equalsIgnoreCase("u")) {
       start(mSpannableStringBuilder, new Underline());
     } else if (tag.equalsIgnoreCase("s")) {
@@ -675,6 +708,12 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       Object open = getLast(mSpannableStringBuilder, Highlight.class);
       int color = open instanceof Highlight ? ((Highlight) open).color : DEFAULT_HIGHLIGHT_COLOR;
       end(mSpannableStringBuilder, Highlight.class, new EnrichedHighlightSpan(color));
+    } else if (tag.equalsIgnoreCase("span")) {
+      endStyledSpan(mSpannableStringBuilder);
+    } else if (tag.equalsIgnoreCase("sub")) {
+      end(mSpannableStringBuilder, Subscript.class, new EnrichedSubscriptSpan());
+    } else if (tag.equalsIgnoreCase("sup")) {
+      end(mSpannableStringBuilder, Superscript.class, new EnrichedSuperscriptSpan());
     } else if (tag.equalsIgnoreCase("u")) {
       end(mSpannableStringBuilder, Underline.class, mSpanFactory.createUnderlineSpan(mStyle));
     } else if (tag.equalsIgnoreCase("s")) {
@@ -938,6 +977,72 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   private static final Pattern HIGHLIGHT_COLOR_PATTERN =
       Pattern.compile("background-color\\s*:\\s*(#[0-9a-fA-F]{6})");
 
+  private static final Pattern TEXT_COLOR_PATTERN =
+      Pattern.compile("(?:^|;)\\s*color\\s*:\\s*(#[0-9a-fA-F]{3,8})");
+
+  private static final Pattern FONT_SIZE_PATTERN =
+      Pattern.compile("font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*px");
+
+  /**
+   * Open a `<span>`.
+   *
+   * Colour and size are the two things a span can carry here — the shapes
+   * TipTap writes and iOS emits. A span with neither still pushes a mark, so
+   * that the matching `</span>` closes something and cannot unbalance the
+   * document.
+   */
+  private static void startStyledSpan(Editable text, Attributes attributes) {
+    String style = attributes.getValue("", "style");
+    Integer color = null;
+    Float size = null;
+
+    if (style != null) {
+      Matcher colorMatcher = TEXT_COLOR_PATTERN.matcher(style);
+      if (colorMatcher.find()) {
+        try {
+          color = Color.parseColor(colorMatcher.group(1));
+        } catch (IllegalArgumentException e) {
+          color = null;
+        }
+      }
+
+      Matcher sizeMatcher = FONT_SIZE_PATTERN.matcher(style);
+      if (sizeMatcher.find()) {
+        try {
+          size = Float.parseFloat(sizeMatcher.group(1));
+        } catch (NumberFormatException e) {
+          size = null;
+        }
+      }
+    }
+
+    start(text, new StyledSpan(color, size));
+  }
+
+  private static void endStyledSpan(Editable text) {
+    Object open = getLast(text, StyledSpan.class);
+    if (!(open instanceof StyledSpan)) return;
+
+    StyledSpan mark = (StyledSpan) open;
+    int where = text.getSpanStart(mark);
+    text.removeSpan(mark);
+
+    int len = text.length();
+    if (where < 0 || where == len) return;
+
+    if (mark.color != null) {
+      text.setSpan(
+          new EnrichedTextColorSpan(mark.color), where, len, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+    if (mark.size != null) {
+      text.setSpan(
+          new EnrichedFontSizeSpan(mark.size, EnrichedConstants.ALLOW_FONT_SCALING_DEFAULT),
+          where,
+          len,
+          Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+  }
+
   private static void start(Editable text, Object mark) {
     int len = text.length();
     text.setSpan(mark, len, len, Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
@@ -1124,6 +1229,21 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
   }
 
   private static class Code {}
+
+  /** An open `<span>`, carrying whatever of colour / size it declared. */
+  private static class StyledSpan {
+    final Integer color;
+    final Float size;
+
+    StyledSpan(Integer color, Float size) {
+      this.color = color;
+      this.size = size;
+    }
+  }
+
+  private static class Subscript {}
+
+  private static class Superscript {}
 
   private static class CodeBlock {}
 

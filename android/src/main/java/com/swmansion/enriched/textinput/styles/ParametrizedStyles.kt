@@ -6,7 +6,10 @@ import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import com.swmansion.enriched.common.EnrichedConstants
+import com.swmansion.enriched.common.spans.EnrichedFontSizeSpan
 import com.swmansion.enriched.common.spans.EnrichedHighlightSpan
+import com.swmansion.enriched.common.spans.EnrichedSubscriptSpan
+import com.swmansion.enriched.common.spans.EnrichedSuperscriptSpan
 import com.swmansion.enriched.common.spans.EnrichedTextColorSpan
 import com.swmansion.enriched.textinput.EnrichedTextInputView
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
@@ -23,6 +26,27 @@ class ParametrizedStyles(
   private var isSettingLinkSpan = false
 
   var mentionIndicators: Array<String> = emptyArray<String>()
+
+  /**
+   * Drop spans of a type covering the range, WITHOUT touching the text.
+   *
+   * [removeSpansForRange] also strips zero-width spaces, which exist to anchor
+   * block styles. Running that for a purely inline style (size, sub/sup) is not
+   * just unnecessary — re-applying over an existing span shifted the indices
+   * and swallowed the selected word out of the serialized HTML.
+   */
+  fun <T> dropSpansIn(
+    spannable: Spannable,
+    start: Int,
+    end: Int,
+    clazz: Class<T>,
+  ) {
+    val ssb = spannable as SpannableStringBuilder
+
+    for (span in ssb.getSpans(start, end, clazz)) {
+      ssb.removeSpan(span)
+    }
+  }
 
   fun <T> removeSpansForRange(
     spannable: Spannable,
@@ -104,6 +128,79 @@ class ParametrizedStyles(
       safeEnd,
       Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
     )
+
+    view.selection?.validateStyles()
+  }
+
+  /**
+   * Per-selection font size, in dp. Replaces any size already covering the
+   * range so sizes don't stack.
+   */
+  fun setFontSizeSpan(
+    start: Int,
+    end: Int,
+    size: Float,
+  ) {
+    if (start >= end || size <= 0f) return
+
+    val spannable = view.text as SpannableStringBuilder
+    dropSpansIn(spannable, start, end, EnrichedFontSizeSpan::class.java)
+
+    val (safeStart, safeEnd) = spannable.getSafeSpanBoundaries(start, end)
+    spannable.setSpan(
+      EnrichedFontSizeSpan(size, view.allowFontScaling),
+      safeStart,
+      safeEnd,
+      Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+    )
+
+    view.selection?.validateStyles()
+  }
+
+  fun removeFontSizeSpans(
+    start: Int,
+    end: Int,
+  ) {
+    if (start >= end) return
+
+    val spannable = view.text as SpannableStringBuilder
+    dropSpansIn(spannable, start, end, EnrichedFontSizeSpan::class.java)
+
+    view.selection?.validateStyles()
+  }
+
+  /**
+   * Subscript / superscript over a range.
+   *
+   * They are mutually exclusive — applying one clears the other, which is what
+   * every editor does and keeps `H<sub>2</sub>O` from also being raised.
+   */
+  fun toggleScriptSpan(
+    start: Int,
+    end: Int,
+    superscript: Boolean,
+  ) {
+    if (start >= end) return
+
+    val spannable = view.text as SpannableStringBuilder
+    val wanted =
+      if (superscript) EnrichedSuperscriptSpan::class.java else EnrichedSubscriptSpan::class.java
+    val other =
+      if (superscript) EnrichedSubscriptSpan::class.java else EnrichedSuperscriptSpan::class.java
+    val alreadyOn = spannable.getSpans(start, end, wanted).isNotEmpty()
+
+    dropSpansIn(spannable, start, end, wanted)
+    dropSpansIn(spannable, start, end, other)
+
+    if (!alreadyOn) {
+      val (safeStart, safeEnd) = spannable.getSafeSpanBoundaries(start, end)
+      spannable.setSpan(
+        if (superscript) EnrichedSuperscriptSpan() else EnrichedSubscriptSpan(),
+        safeStart,
+        safeEnd,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+      )
+    }
 
     view.selection?.validateStyles()
   }

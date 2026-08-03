@@ -569,6 +569,14 @@ interface NativeCommands {
     start: Int32,
     end: Int32
   ) => void;
+  // Subscript / superscript over the range. `superscript` picks which one;
+  // they are mutually exclusive.
+  toggleScript: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    superscript: boolean
+  ) => void;
   // Strip inline formatting from the range (leaves plain text).
   clearFormatting: (
     viewRef: React.ElementRef<ComponentType>,
@@ -629,6 +637,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'removeTextColor',
     'addFontSize',
     'removeFontSize',
+    'toggleScript',
     'clearFormatting',
     'clearColors',
   ],

@@ -403,6 +403,9 @@ export const EnrichedTextInput = ({
       // than this wrapper.
       setFontSize: (_start: number, _end: number, _size: number) => {},
       removeFontSize: (_start: number, _end: number) => {},
+      // Same parity reasoning: on web sub/superscript comes from the host app's
+      // own TipTap marks, not this wrapper.
+      toggleScript: (_start: number, _end: number, _superscript: boolean) => {},
       // Strip inline marks on the current selection. clearColors is a parity
       // stub: highlight/color marks live in the host app's TipTap config, not
       // this wrapper (same as setHighlight/removeHighlight above).

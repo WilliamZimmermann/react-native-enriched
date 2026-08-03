@@ -497,6 +497,9 @@ export interface EnrichedTextInputInstance extends NativeMethods {
   /** Clears any explicit font size in the range, returning it to the editor's
    *  base size. */
   removeFontSize: (start: number, end: number) => void;
+  /** Subscript over the range, or superscript when `superscript` is true.
+   *  Toggles: applying the one already there removes it. */
+  toggleScript: (start: number, end: number, superscript: boolean) => void;
   setImage: (src: string, width: number, height: number) => void;
   startMention: (indicator: string) => void;
   setMention: (

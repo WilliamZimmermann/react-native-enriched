@@ -429,6 +429,7 @@ interface NativeCommands {
     removeHighlight: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     addFontSize: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, size: Float) => void;
     removeFontSize: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    toggleScript: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, superscript: boolean) => void;
     clearFormatting: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearColors: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
 }

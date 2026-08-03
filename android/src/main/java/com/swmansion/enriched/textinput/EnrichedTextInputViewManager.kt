@@ -590,7 +590,7 @@ class EnrichedTextInputViewManager :
     end: Int,
     size: Float,
   ) {
-    // No-op: per-selection font size spans not implemented on Android yet.
+    view?.addFontSize(start, end, size)
   }
 
   override fun removeFontSize(
@@ -598,7 +598,16 @@ class EnrichedTextInputViewManager :
     start: Int,
     end: Int,
   ) {
-    // No-op: per-selection font size spans not implemented on Android yet.
+    view?.removeFontSize(start, end)
+  }
+
+  override fun toggleScript(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    superscript: Boolean,
+  ) {
+    view?.toggleScript(start, end, superscript)
   }
 
   override fun clearFormatting(

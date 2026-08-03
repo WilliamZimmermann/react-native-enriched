@@ -86,6 +86,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void removeHighlight(T view, int start, int end);
   void addFontSize(T view, int start, int end, float size);
   void removeFontSize(T view, int start, int end);
+  void toggleScript(T view, int start, int end, boolean superscript);
   void clearFormatting(T view, int start, int end);
   void clearColors(T view, int start, int end);
 }
