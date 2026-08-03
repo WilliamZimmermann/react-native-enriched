@@ -35,6 +35,21 @@ class ParametrizedStyles(
    * just unnecessary — re-applying over an existing span shifted the indices
    * and swallowed the selected word out of the serialized HTML.
    */
+  /**
+   * Report the new HTML after an inline style changed.
+   *
+   * The span watcher only emits for its own `EnrichedInputSpan`s, so applying a
+   * colour, a size or sub/superscript changed the text on screen and never
+   * reached JS: the note looked formatted and saved without the change, because
+   * the draft still held the last HTML a KEYSTROKE had emitted. Passing null
+   * asks for an unconditional emit.
+   */
+  private fun emitHtmlChange() {
+    val spannable = view.text as? Spannable ?: return
+
+    view.spanWatcher?.emitEvent(spannable, null)
+  }
+
   fun <T> dropSpansIn(
     spannable: Spannable,
     start: Int,
@@ -101,6 +116,7 @@ class ParametrizedStyles(
     )
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   /** Apply a foreground colour over [start, end), replacing any already there. */
@@ -130,6 +146,7 @@ class ParametrizedStyles(
     )
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   /**
@@ -155,6 +172,7 @@ class ParametrizedStyles(
     )
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   fun removeFontSizeSpans(
@@ -167,6 +185,7 @@ class ParametrizedStyles(
     dropSpansIn(spannable, start, end, EnrichedFontSizeSpan::class.java)
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   /**
@@ -203,6 +222,7 @@ class ParametrizedStyles(
     }
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   fun removeTextColorSpans(
@@ -215,6 +235,7 @@ class ParametrizedStyles(
     removeSpansForRange(spannable, start, end, EnrichedTextColorSpan::class.java)
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   fun removeHighlightSpans(
@@ -227,6 +248,7 @@ class ParametrizedStyles(
     removeSpansForRange(spannable, start, end, EnrichedHighlightSpan::class.java)
 
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   fun setLinkSpan(
@@ -255,6 +277,7 @@ class ParametrizedStyles(
     spannable.setSpan(span, safeStart, safeEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
     view.selection?.validateStyles()
+    emitHtmlChange()
     isSettingLinkSpan = false
   }
 
@@ -272,6 +295,7 @@ class ParametrizedStyles(
       spannable.removeSpan(span)
     }
     view.selection?.validateStyles()
+    emitHtmlChange()
   }
 
   fun afterTextChanged(
