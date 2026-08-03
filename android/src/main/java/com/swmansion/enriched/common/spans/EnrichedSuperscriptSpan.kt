@@ -18,7 +18,8 @@ class EnrichedSuperscriptSpan :
   override fun updateMeasureState(textPaint: TextPaint) = apply(textPaint)
 
   private fun apply(textPaint: TextPaint) {
-    textPaint.baselineShift += (textPaint.textSize * ENRICHED_SCRIPT_SHIFT).toInt()
+    // Negative moves UP; see EnrichedSubscriptSpan.
+    textPaint.baselineShift -= (textPaint.textSize * ENRICHED_SCRIPT_SHIFT).toInt()
     textPaint.textSize = textPaint.textSize * ENRICHED_SCRIPT_SCALE
   }
 }

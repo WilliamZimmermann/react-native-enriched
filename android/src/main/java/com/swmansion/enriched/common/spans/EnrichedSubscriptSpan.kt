@@ -28,7 +28,10 @@ class EnrichedSubscriptSpan :
   override fun updateMeasureState(textPaint: TextPaint) = apply(textPaint)
 
   private fun apply(textPaint: TextPaint) {
-    textPaint.baselineShift -= (textPaint.textSize * ENRICHED_SCRIPT_SHIFT).toInt()
+    // A POSITIVE baselineShift moves text DOWN — the platform's own
+    // SubscriptSpan shifts by `-ascent/2`, and ascent is negative. Getting the
+    // sign backwards is why sub and superscript rendered swapped.
+    textPaint.baselineShift += (textPaint.textSize * ENRICHED_SCRIPT_SHIFT).toInt()
     textPaint.textSize = textPaint.textSize * ENRICHED_SCRIPT_SCALE
   }
 }
