@@ -494,6 +494,96 @@
 // TableAttachment to render a readable preview. Rich-cell formatting
 // survives only in the rawHtml stash; we don't try to reconstruct it on
 // the way out.
+/**
+ * Decode the entities a table cell's HTML can carry.
+ *
+ * The editor escapes every non-ASCII character NUMERICALLY, and so does
+ * OneNote: a cell reading "Instituição" round-trips as `Institui&#231;&#227;o`.
+ * Decoding only the named entities painted that literally, character for
+ * character, in the rendered table. Mirrors Android's EnrichedTableSpan
+ * decodeEntities, which already handled this.
+ */
++ (NSString *)decodeCellEntities:(NSString *)text {
+  static NSRegularExpression *numericRe = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    // `&#233;` or `&#xe9;` — hex in group 1, decimal in group 2.
+    numericRe = [NSRegularExpression
+        regularExpressionWithPattern:@"&#(?:x([0-9a-fA-F]+)|([0-9]+));"
+                             options:0
+                               error:nil];
+  });
+
+  NSMutableString *out = [NSMutableString stringWithString:text];
+
+  if (numericRe != nil) {
+    NSArray<NSTextCheckingResult *> *matches =
+        [numericRe matchesInString:out
+                           options:0
+                             range:NSMakeRange(0, out.length)];
+    // Back to front so each replacement leaves the earlier ranges valid.
+    for (NSTextCheckingResult *match in [matches reverseObjectEnumerator]) {
+      NSRange hexRange = [match rangeAtIndex:1];
+      NSRange decRange = [match rangeAtIndex:2];
+      unsigned long long code = 0;
+      BOOL parsed = NO;
+
+      if (hexRange.location != NSNotFound) {
+        NSScanner *scanner =
+            [NSScanner scannerWithString:[out substringWithRange:hexRange]];
+        parsed = [scanner scanHexLongLong:&code];
+      } else if (decRange.location != NSNotFound) {
+        code = (unsigned long long)[[out substringWithRange:decRange]
+            longLongValue];
+        parsed = code > 0;
+      }
+
+      // Anything outside Unicode (or a surrogate half) is left as written
+      // rather than replaced with a replacement character.
+      if (!parsed || code == 0 || code > 0x10FFFF ||
+          (code >= 0xD800 && code <= 0xDFFF)) {
+        continue;
+      }
+
+      NSString *replacement =
+          [[NSString alloc] initWithBytes:&(UTF32Char){(UTF32Char)code}
+                                   length:sizeof(UTF32Char)
+                                 encoding:NSUTF32LittleEndianStringEncoding];
+      if (replacement != nil) {
+        [out replaceCharactersInRange:match.range withString:replacement];
+      }
+    }
+  }
+
+  [out replaceOccurrencesOfString:@"&nbsp;"
+                       withString:@" "
+                          options:0
+                            range:NSMakeRange(0, out.length)];
+  [out replaceOccurrencesOfString:@"&lt;"
+                       withString:@"<"
+                          options:0
+                            range:NSMakeRange(0, out.length)];
+  [out replaceOccurrencesOfString:@"&gt;"
+                       withString:@">"
+                          options:0
+                            range:NSMakeRange(0, out.length)];
+  [out replaceOccurrencesOfString:@"&quot;"
+                       withString:@"\""
+                          options:0
+                            range:NSMakeRange(0, out.length)];
+  [out replaceOccurrencesOfString:@"&apos;"
+                       withString:@"'"
+                          options:0
+                            range:NSMakeRange(0, out.length)];
+  // Last, so an escaped "&amp;lt;" does not become a tag-looking "<".
+  [out replaceOccurrencesOfString:@"&amp;"
+                       withString:@"&"
+                          options:0
+                            range:NSMakeRange(0, out.length)];
+
+  return out;
+}
+
 + (NSArray<NSArray<NSString *> *> *)parseTableRowsFromHtml:(NSString *)rawHtml {
   NSMutableArray<NSArray<NSString *> *> *rows = [NSMutableArray array];
   if (rawHtml.length == 0)
@@ -543,19 +633,7 @@
                                    options:0
                                      range:NSMakeRange(0, cellInner.length)
                               withTemplate:@""];
-      NSString *decoded = noTags;
-      decoded = [decoded stringByReplacingOccurrencesOfString:@"&nbsp;"
-                                                   withString:@" "];
-      decoded = [decoded stringByReplacingOccurrencesOfString:@"&amp;"
-                                                   withString:@"&"];
-      decoded = [decoded stringByReplacingOccurrencesOfString:@"&lt;"
-                                                   withString:@"<"];
-      decoded = [decoded stringByReplacingOccurrencesOfString:@"&gt;"
-                                                   withString:@">"];
-      decoded = [decoded stringByReplacingOccurrencesOfString:@"&quot;"
-                                                   withString:@"\""];
-      decoded = [decoded stringByReplacingOccurrencesOfString:@"&#39;"
-                                                   withString:@"'"];
+      NSString *decoded = [self decodeCellEntities:noTags];
       // Collapse runs of whitespace (newlines, multiple spaces) to a
       // single space so a multi-line cell stays on one line in the
       // preview.
