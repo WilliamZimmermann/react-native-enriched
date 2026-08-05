@@ -545,9 +545,13 @@
         continue;
       }
 
+      // A named local, not a compound literal: this file is Objective-C++, and
+      // taking the address of a compound literal is C-only — it does not
+      // compile as C++.
+      UTF32Char scalar = (UTF32Char)code;
       NSString *replacement =
-          [[NSString alloc] initWithBytes:&(UTF32Char){(UTF32Char)code}
-                                   length:sizeof(UTF32Char)
+          [[NSString alloc] initWithBytes:&scalar
+                                   length:sizeof(scalar)
                                  encoding:NSUTF32LittleEndianStringEncoding];
       if (replacement != nil) {
         [out replaceCharactersInRange:match.range withString:replacement];
