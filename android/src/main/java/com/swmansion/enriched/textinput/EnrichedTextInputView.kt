@@ -39,6 +39,7 @@ import com.facebook.react.views.text.ReactTypefaceUtils.applyStyles
 import com.facebook.react.views.text.ReactTypefaceUtils.parseFontStyle
 import com.facebook.react.views.text.ReactTypefaceUtils.parseFontWeight
 import com.swmansion.enriched.common.EnrichedConstants
+import com.swmansion.enriched.common.ForceRedrawSpan
 import com.swmansion.enriched.common.GumboNormalizer
 import com.swmansion.enriched.common.parser.EnrichedParser
 import com.swmansion.enriched.common.pixelFromSpOrDp
@@ -1201,6 +1202,15 @@ class EnrichedTextInputView :
         .getSpans(start, start + 1, EnrichedInputImageSpan::class.java)
         .firstOrNull() ?: return
     span.caption = caption.ifBlank { null }
+    // Mutating a field on a span tells the Spannable nothing, so the layout kept
+    // the line metrics it measured without a caption and the caption only
+    // appeared after the note was saved and re-parsed. Touching the range with a
+    // throwaway MetricAffectingSpan is what forces a reflow — the same trick the
+    // image span uses when its bitmap finishes loading and changes size.
+    val end = (start + 1).coerceAtMost(spannable.length)
+    val redraw = ForceRedrawSpan()
+    spannable.setSpan(redraw, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+    spannable.removeSpan(redraw)
     layoutManager.invalidateLayout()
     // A span-attribute mutation doesn't trip the text/span watchers, so emit the
     // HTML change explicitly (drives autosave + the data-caption round-trip).
