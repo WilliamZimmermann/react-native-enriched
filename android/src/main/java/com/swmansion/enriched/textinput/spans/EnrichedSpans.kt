@@ -234,6 +234,7 @@ object EnrichedSpans {
           blockingStyles = arrayOf(INLINE_CODE, CODE_BLOCK, LINK),
         )
       }
+
       AI_SUGGESTION, AI_FLAG -> {
         // AI marks are overlays applied programmatically — they coexist with any
         // inline/block formatting and conflict with nothing.

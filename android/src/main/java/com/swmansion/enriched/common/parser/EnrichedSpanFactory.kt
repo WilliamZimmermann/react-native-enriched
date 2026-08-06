@@ -80,6 +80,7 @@ interface EnrichedSpanFactory<T> {
     data: EnrichedTableData,
     style: T,
   ): EnrichedTableSpan
+
   fun createHorizontalRuleSpan(): EnrichedHorizontalRuleSpan
 
   fun createH1Span(style: T): EnrichedH1Span

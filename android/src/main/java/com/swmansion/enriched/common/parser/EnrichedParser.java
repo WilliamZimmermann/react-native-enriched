@@ -8,6 +8,8 @@ import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ParagraphStyle;
 import com.swmansion.enriched.common.EnrichedConstants;
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan;
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan;
 import com.swmansion.enriched.common.spans.EnrichedAlignmentSpan;
 import com.swmansion.enriched.common.spans.EnrichedBoldSpan;
 import com.swmansion.enriched.common.spans.EnrichedCheckboxListSpan;
@@ -25,8 +27,6 @@ import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan;
 import com.swmansion.enriched.common.spans.EnrichedImageSpan;
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan;
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan;
-import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan;
-import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan;
 import com.swmansion.enriched.common.spans.EnrichedLinkSpan;
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
@@ -1196,26 +1196,18 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       return;
     }
 
+    // parseSize, never Integer.parseInt: a missing attribute or a decimal — both
+    // of which real documents contain — threw out of the SAX handler and aborted
+    // the parse of the WHOLE document.
     int width = parseSize(attributes.getValue("", "width"), DEFAULT_IMAGE_WIDTH);
     int height = parseSize(attributes.getValue("", "height"), Math.round(width * 3f / 4f));
-
-    int len = text.length();
-    text.append("￼");
-    text.setSpan(
-        spanFactory.createImageSpan(src, width, height),
-        len,
-        text.length(),
-        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-    String width = attributes.getValue("", "width");
-    String height = attributes.getValue("", "height");
     String caption = attributes.getValue("", "data-caption");
 
     int len = text.length();
     text.append("￼");
     // createImageSpan returns the concrete EnrichedImageSpan (like
     // createHorizontalRuleSpan), not the generic T.
-    EnrichedImageSpan imageSpan =
-        spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height));
+    EnrichedImageSpan imageSpan = spanFactory.createImageSpan(src, width, height);
     if (caption != null && !caption.isEmpty()) {
       imageSpan.setCaption(caption);
     }
@@ -1304,12 +1296,12 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
     String aiId = attributes.getValue("", "data-ai-id");
     if (suggestion != null) {
       String model = attributes.getValue("", "data-ai-model");
-      start(text, new AiSuggestion(aiId == null ? "" : aiId, suggestion, model == null ? "" : model));
+      start(
+          text, new AiSuggestion(aiId == null ? "" : aiId, suggestion, model == null ? "" : model));
     } else if (flag != null) {
       String explanation = attributes.getValue("", "data-ai-explanation");
       start(
-          text,
-          new AiFlag(aiId == null ? "" : aiId, flag, explanation == null ? "" : explanation));
+          text, new AiFlag(aiId == null ? "" : aiId, flag, explanation == null ? "" : explanation));
     }
   }
 

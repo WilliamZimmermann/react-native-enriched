@@ -15,8 +15,8 @@ import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.viewmanagers.EnrichedTextInputViewManagerDelegate
 import com.facebook.react.viewmanagers.EnrichedTextInputViewManagerInterface
 import com.facebook.yoga.YogaMeasureMode
-import com.swmansion.enriched.textinput.events.OnChangeHtmlEvent
 import com.swmansion.enriched.textinput.events.OnAiMarkTapEvent
+import com.swmansion.enriched.textinput.events.OnChangeHtmlEvent
 import com.swmansion.enriched.textinput.events.OnChangeSelectionEvent
 import com.swmansion.enriched.textinput.events.OnChangeStateEvent
 import com.swmansion.enriched.textinput.events.OnChangeTextEvent

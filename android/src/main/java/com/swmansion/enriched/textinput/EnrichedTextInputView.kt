@@ -147,6 +147,7 @@ class EnrichedTextInputView :
   // land on a table cell) from a scroll or a drag-select.
   private var touchDownX = 0f
   private var touchDownY = 0f
+
   // Configured native selection highlight color, restored after an image
   // selection temporarily clears it (see onSelectionChanged).
   private var baseHighlightColor: Int = highlightColor
