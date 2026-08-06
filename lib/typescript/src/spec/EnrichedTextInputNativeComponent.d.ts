@@ -117,6 +117,7 @@ export interface OnChangeStateEvent {
     };
     alignment: string;
     direction: string;
+    selectedImageCaption: string;
 }
 export interface OnLinkDetected {
     text: string;
@@ -157,6 +158,16 @@ export interface OnTableCellTapEvent {
     width: Float;
     height: Float;
     colFractions: string;
+}
+export interface OnAiMarkTapEvent {
+    kind: string;
+    aiId: string;
+    status: string;
+    explanation: string;
+    rectX: Float;
+    rectY: Float;
+    rectWidth: Float;
+    rectHeight: Float;
 }
 export interface OnRequestHtmlResultEvent {
     requestId: Int32;
@@ -283,6 +294,7 @@ export interface OnContextMenuItemPressEvent {
         };
         alignment: string;
         direction: string;
+        selectedImageCaption: string;
     };
 }
 interface TargetedEvent {
@@ -385,6 +397,7 @@ export interface NativeProps extends ViewProps {
     onMention?: DirectEventHandler<OnMentionEvent>;
     onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
     onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
+    onAiMarkTap?: DirectEventHandler<OnAiMarkTapEvent>;
     onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
     onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
     onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;
@@ -410,6 +423,7 @@ interface NativeCommands {
     setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     setSelection: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    focusTableCell: (viewRef: React.ElementRef<ComponentType>, tableIndex: Int32, row: Int32, col: Int32) => void;
     toggleBold: (viewRef: React.ElementRef<ComponentType>) => void;
     toggleItalic: (viewRef: React.ElementRef<ComponentType>) => void;
     toggleUnderline: (viewRef: React.ElementRef<ComponentType>) => void;
@@ -431,6 +445,8 @@ interface NativeCommands {
     addLink: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, text: string, url: string) => void;
     removeLink: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     addImage: (viewRef: React.ElementRef<ComponentType>, uri: string, width: Float, height: Float) => void;
+    setSelectedImageCaption: (viewRef: React.ElementRef<ComponentType>, caption: string) => void;
+    insertHorizontalRule: (viewRef: React.ElementRef<ComponentType>) => void;
     startMention: (viewRef: React.ElementRef<ComponentType>, indicator: string) => void;
     addMention: (viewRef: React.ElementRef<ComponentType>, indicator: string, text: string, payload: string) => void;
     requestHTML: (viewRef: React.ElementRef<ComponentType>, requestId: Int32) => void;
@@ -447,6 +463,14 @@ interface NativeCommands {
     toggleScript: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, superscript: boolean) => void;
     clearFormatting: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     clearColors: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
+    applyAiSuggestion: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, aiId: string, status: string, model: string) => void;
+    applyAiFlag: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32, aiId: string, status: string, explanation: string) => void;
+    acceptAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string) => void;
+    rejectAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string, deleteText: boolean) => void;
+    claimAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string) => void;
+    acceptAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+    rejectAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+    rejectAllAiFlags: (viewRef: React.ElementRef<ComponentType>) => void;
 }
 export declare const Commands: NativeCommands;
 declare const _default: HostComponent<NativeProps>;

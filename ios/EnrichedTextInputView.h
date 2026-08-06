@@ -39,16 +39,21 @@ NS_ASSUME_NONNULL_BEGIN
   NSValue *dotReplacementRange;
 @public
   NSArray<NSDictionary *> *textShortcuts;
+  // aiId of the AI mark the caret currently sits inside, so onAiMarkTap fires
+  // once when the caret enters a mark rather than on every selection change.
+  NSString *_Nullable lastAiMarkId;
 }
 - (CGSize)measureSize:(CGFloat)maxWidth;
 - (void)emitOnLinkDetectedEvent:(LinkData *)linkData range:(NSRange)range;
+- (void)emitOnKeyPressEvent:(NSString *)key;
 - (void)emitOnMentionEvent:(NSString *)indicator text:(nullable NSString *)text;
 - (void)emitOnPasteImagesEvent:(NSArray<NSDictionary *> *)images;
 - (void)anyTextMayHaveBeenModified;
 - (void)scheduleRelayoutIfNeeded;
-// Hardware-keyboard formatting shortcuts (Cmd-B / Cmd-I / Cmd-U). Route to the
-// same toggleRegularStyle: path as the JS commands and the toolbar buttons, so
-// the change is tracked by the enriched attribute system and emitted to JS.
+// Toggle inline styles from a hardware-keyboard shortcut (Cmd-B / Cmd-I /
+// Cmd-U). Routed to the same path as the toolbar buttons and JS commands so
+// state emission / autosave stay in sync. Kept param-free here so the public
+// header doesn't need the StyleType enum.
 - (void)katavToggleBold;
 - (void)katavToggleItalic;
 - (void)katavToggleUnderline;

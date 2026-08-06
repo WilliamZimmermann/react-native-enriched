@@ -100,6 +100,8 @@ function buildState(
     },
     alignment: 'left',
     direction: 'auto',
+    selectedImageCaption:
+      (editor.getAttributes('image').caption as string | null) ?? '',
   };
 }
 

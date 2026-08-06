@@ -16,6 +16,7 @@ import com.facebook.react.viewmanagers.EnrichedTextInputViewManagerDelegate
 import com.facebook.react.viewmanagers.EnrichedTextInputViewManagerInterface
 import com.facebook.yoga.YogaMeasureMode
 import com.swmansion.enriched.textinput.events.OnChangeHtmlEvent
+import com.swmansion.enriched.textinput.events.OnAiMarkTapEvent
 import com.swmansion.enriched.textinput.events.OnChangeSelectionEvent
 import com.swmansion.enriched.textinput.events.OnChangeStateEvent
 import com.swmansion.enriched.textinput.events.OnChangeTextEvent
@@ -73,6 +74,7 @@ class EnrichedTextInputViewManager :
     map.put(OnMentionEvent.EVENT_NAME, mapOf("registrationName" to OnMentionEvent.EVENT_NAME))
     map.put(OnChangeSelectionEvent.EVENT_NAME, mapOf("registrationName" to OnChangeSelectionEvent.EVENT_NAME))
     map.put(OnTableCellTapEvent.EVENT_NAME, mapOf("registrationName" to OnTableCellTapEvent.EVENT_NAME))
+    map.put(OnAiMarkTapEvent.EVENT_NAME, mapOf("registrationName" to OnAiMarkTapEvent.EVENT_NAME))
     map.put(OnRequestHtmlResultEvent.EVENT_NAME, mapOf("registrationName" to OnRequestHtmlResultEvent.EVENT_NAME))
     map.put(OnInputKeyPressEvent.EVENT_NAME, mapOf("registrationName" to OnInputKeyPressEvent.EVENT_NAME))
     map.put(OnPasteImagesEvent.EVENT_NAME, mapOf("registrationName" to OnPasteImagesEvent.EVENT_NAME))
@@ -457,6 +459,17 @@ class EnrichedTextInputViewManager :
     view?.addImage(src, width, height)
   }
 
+  override fun setSelectedImageCaption(
+    view: EnrichedTextInputView?,
+    caption: String,
+  ) {
+    view?.setSelectedImageCaption(caption)
+  }
+
+  override fun insertHorizontalRule(view: EnrichedTextInputView?) {
+    view?.insertHorizontalRule()
+  }
+
   override fun startMention(
     view: EnrichedTextInputView?,
     indicator: String,
@@ -472,6 +485,62 @@ class EnrichedTextInputViewManager :
   ) {
     val attributes = jsonStringToStringMap(payload)
     view?.addMention(text, indicator, attributes)
+  }
+
+  override fun applyAiSuggestion(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    model: String,
+  ) {
+    view?.applyAiSuggestion(start, end, aiId, status, model)
+  }
+
+  override fun applyAiFlag(
+    view: EnrichedTextInputView?,
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    explanation: String,
+  ) {
+    view?.applyAiFlag(start, end, aiId, status, explanation)
+  }
+
+  override fun acceptAiMark(
+    view: EnrichedTextInputView?,
+    aiId: String,
+  ) {
+    view?.acceptAiMark(aiId)
+  }
+
+  override fun rejectAiMark(
+    view: EnrichedTextInputView?,
+    aiId: String,
+    deleteText: Boolean,
+  ) {
+    view?.rejectAiMark(aiId, deleteText)
+  }
+
+  override fun claimAiMark(
+    view: EnrichedTextInputView?,
+    aiId: String,
+  ) {
+    view?.claimAiMark(aiId)
+  }
+
+  override fun acceptAllAiSuggestions(view: EnrichedTextInputView?) {
+    view?.acceptAllAiSuggestions()
+  }
+
+  override fun rejectAllAiSuggestions(view: EnrichedTextInputView?) {
+    view?.rejectAllAiSuggestions()
+  }
+
+  override fun rejectAllAiFlags(view: EnrichedTextInputView?) {
+    view?.rejectAllAiFlags()
   }
 
   override fun requestHTML(
@@ -626,6 +695,15 @@ class EnrichedTextInputViewManager :
     end: Int,
   ) {
     // No-op: wired natively on iOS. Android isn't a tablet target yet.
+  }
+
+  override fun focusTableCell(
+    view: EnrichedTextInputView?,
+    tableIndex: Int,
+    row: Int,
+    col: Int,
+  ) {
+    // No-op: table cell focus is wired natively on iOS. Android isn't a tablet target yet.
   }
 
   override fun measure(

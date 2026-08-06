@@ -176,6 +176,7 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
     OnChangeStateHighlight highlight;
     std::string alignment;
     std::string direction;
+    std::string selectedImageCaption;
     };
 
   struct OnLinkDetected {
@@ -216,6 +217,17 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
     Float width;
     Float height;
     std::string colFractions;
+    };
+
+  struct OnAiMarkTap {
+      std::string kind;
+    std::string aiId;
+    std::string status;
+    std::string explanation;
+    Float rectX;
+    Float rectY;
+    Float rectWidth;
+    Float rectHeight;
     };
 
   struct OnRequestHtmlResult {
@@ -381,6 +393,7 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
     OnContextMenuItemPressStyleStateHighlight highlight;
     std::string alignment;
     std::string direction;
+    std::string selectedImageCaption;
     };
 
   struct OnContextMenuItemPress {
@@ -413,6 +426,8 @@ class EnrichedTextInputViewEventEmitter : public ViewEventEmitter {
   void onChangeSelection(OnChangeSelection value) const;
 
   void onTableCellTap(OnTableCellTap value) const;
+
+  void onAiMarkTap(OnAiMarkTap value) const;
 
   void onRequestHtmlResult(OnRequestHtmlResult value) const;
 

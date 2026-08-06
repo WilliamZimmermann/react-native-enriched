@@ -335,6 +335,9 @@ export const EnrichedTextInput = ({
           })
         );
       },
+      // Native-only (the rasterised-table cell navigation); no-op on web, where
+      // TipTap tables are natively editable.
+      focusTableCell: () => {},
       getHTML: () => Promise.resolve(normalizeHtmlFromTiptap(editor.getHTML())),
       getSelectionHtml: (start: number, end: number) => {
         const doc = editor.state.doc;
@@ -422,6 +425,23 @@ export const EnrichedTextInput = ({
       ) => setMention(editor, indicator, text, attributes),
       setImage: (src: string, width: number, height: number) =>
         runFocused(editor, (c) => c.setImage({ src, width, height })),
+      setSelectedImageCaption: (caption: string) =>
+        runFocused(editor, (c) =>
+          c.updateAttributes('image', { caption: caption || null })
+        ),
+      insertHorizontalRule: () =>
+        runFocused(editor, (c) => c.insertContent('<hr>')),
+      // AI track-changes marks are native-only in this wrapper — on web the
+      // host app drives them through its own TipTap AiSuggestion extension, so
+      // these are parity no-ops (same rationale as setHighlight above).
+      applyAiSuggestion: () => {},
+      applyAiFlag: () => {},
+      acceptAiMark: () => {},
+      rejectAiMark: () => {},
+      claimAiMark: () => {},
+      acceptAllAiSuggestions: () => {},
+      rejectAllAiSuggestions: () => {},
+      rejectAllAiFlags: () => {},
       measure: () => {},
       measureInWindow: () => {},
       measureLayout: () => {},

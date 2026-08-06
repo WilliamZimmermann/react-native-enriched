@@ -3,6 +3,7 @@ package com.swmansion.enriched.common.spans
 import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.drawable.AnimatedImageDrawable
@@ -10,7 +11,10 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.text.Layout
 import android.text.Spannable
+import android.text.StaticLayout
+import android.text.TextPaint
 import android.text.style.ImageSpan
 import android.util.Log
 import androidx.core.graphics.drawable.toDrawable
@@ -26,9 +30,59 @@ open class EnrichedImageSpan :
   private var width: Int = 0
   private var height: Int = 0
 
+  /** Optional caption shown below the image; round-trips as `data-caption`. */
+  var caption: String? = null
+
   constructor(drawable: Drawable, source: String, width: Int, height: Int) : super(drawable, source, ALIGN_BASELINE) {
     this.width = width
     this.height = height
+  }
+
+  // TextPaint (not Paint): StaticLayout.Builder.obtain requires a TextPaint.
+  private val captionPaint: TextPaint by lazy {
+    TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+      val density = Resources.getSystem().displayMetrics.density
+      textSize = 13f * density
+      // Fallback only until the first draw; draw() re-tints this from the body
+      // text color so the caption follows the active (in-app) theme.
+      color = 0xFF8A8A8A.toInt()
+    }
+  }
+
+  /** Caption tint = the body text color (theme-aware), dimmed to read as
+   *  secondary. The old fixed gray ignored the theme entirely. */
+  private fun captionColorFrom(textColor: Int): Int =
+    Color.argb(
+      (Color.alpha(textColor) * 0.6f).toInt(),
+      Color.red(textColor),
+      Color.green(textColor),
+      Color.blue(textColor),
+    )
+
+  private fun captionDensityGap(): Float = 4f * Resources.getSystem().displayMetrics.density
+
+  /** Lays the caption out, wrapping across as many lines as it needs at the
+   *  image width. Null for a blank caption or non-positive width. */
+  private fun buildCaptionLayout(width: Int): StaticLayout? {
+    val cap = caption
+    if (cap.isNullOrBlank() || width <= 0) return null
+    return StaticLayout.Builder
+      .obtain(cap, 0, cap.length, captionPaint, width)
+      .setAlignment(Layout.Alignment.ALIGN_CENTER)
+      .setIncludePad(false)
+      .build()
+  }
+
+  /** Vertical space (px) the caption needs below the image baseline, or 0. */
+  private fun captionExtraHeight(): Int {
+    val cap = caption
+    if (cap.isNullOrBlank()) return 0
+    val layout = buildCaptionLayout(drawable.bounds.right)
+    val textHeight =
+      layout?.height
+        // Pre-layout (image width unknown yet): reserve a single line.
+        ?: (captionPaint.fontMetricsInt.let { it.descent - it.ascent })
+    return captionDensityGap().toInt() + textHeight
   }
 
   override fun draw(
@@ -43,10 +97,39 @@ open class EnrichedImageSpan :
     paint: Paint,
   ) {
     val drawable = drawable
+    val cap = caption
     canvas.withSave {
-      val transY = bottom - drawable.bounds.bottom - paint.fontMetricsInt.descent
-      translate(x, transY.toFloat())
+      val transY =
+        if (cap.isNullOrBlank()) {
+          // Original behavior: image bottom rests on the line bottom.
+          (bottom - drawable.bounds.bottom - paint.fontMetricsInt.descent).toFloat()
+        } else {
+          // With a caption, anchor the image bottom on the text baseline so the
+          // caption can sit in the reserved descent space below it.
+          (y - drawable.bounds.bottom).toFloat()
+        }
+      translate(x, transY)
       drawable.draw(this)
+    }
+
+    // NOTE: native caption rendering is best-effort and needs on-device tuning.
+    if (!cap.isNullOrBlank()) {
+      // Tint the caption from the current body text color (theme-aware) so it's
+      // dark on the light surface and light on the dark surface, instead of a
+      // fixed gray that ignored the theme. Set per-draw so a theme toggle (which
+      // re-tints the text paint) recolors the caption too.
+      captionPaint.color = captionColorFrom(paint.color)
+      // Word-wrap the caption across the image width so long text shows every
+      // line instead of being clipped/measured to one (the StaticLayout's height
+      // matches captionExtraHeight, so reserved space == drawn space).
+      val layout = buildCaptionLayout(drawable.bounds.right)
+      if (layout != null) {
+        canvas.withSave {
+          // `y` is the image baseline; the caption block starts a gap below it.
+          translate(x, y + captionDensityGap())
+          layout.draw(this)
+        }
+      }
     }
   }
 
@@ -115,6 +198,13 @@ open class EnrichedImageSpan :
       if (targetTop < fm.ascent) {
         fm.ascent = targetTop
         fm.top = targetTop
+      }
+
+      // Reserve space BELOW the baseline for the caption (rendered in draw()).
+      val extra = captionExtraHeight()
+      if (extra > 0) {
+        if (fm.descent < extra) fm.descent = extra
+        if (fm.bottom < extra) fm.bottom = extra
       }
     }
 

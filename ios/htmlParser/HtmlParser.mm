@@ -109,9 +109,10 @@
  * you MUST add it to the `textTags` set below.
  */
 + (NSString *)stripExtraWhiteSpacesAndNewlines:(NSString *)html {
-  NSSet *textTags = [NSSet setWithObjects:@"p", @"h1", @"h2", @"h3", @"h4",
-                                          @"h5", @"h6", @"li", @"b", @"a", @"s",
-                                          @"mention", @"code", @"u", @"i", nil];
+  NSSet *textTags =
+      [NSSet setWithObjects:@"p", @"h1", @"h2", @"h3", @"h4", @"h5", @"h6",
+                            @"li", @"b", @"a", @"s", @"mention", @"code", @"u",
+                            @"i", @"span", nil];
 
   NSMutableString *output = [NSMutableString stringWithCapacity:html.length];
   NSMutableString *currentTagBuffer = [NSMutableString string];
@@ -249,7 +250,10 @@
   [processedTags addObject:tagEntry];
   [ongoingTags removeObjectForKey:tagName];
 
-  if ([tagName isEqualToString:@"img"]) {
+  if ([tagName isEqualToString:@"img"] || [tagName isEqualToString:@"hr"]) {
+    // Both images and horizontal rules add exactly one object-replacement
+    // character to the final text storage; bump the shared counter so later
+    // ranges account for it.
     (*precedingImageCount)++;
   }
 }
@@ -350,6 +354,14 @@
     fixedHtml = [fixedHtml stringByReplacingOccurrencesOfString:@"<br/>"
                                                      withString:@"<br>"];
 
+    // normalise the self-closing horizontal rule to the bare void form the
+    // tokenizer expects (a `/` mid-tag-name would otherwise be mistaken for a
+    // closing tag). All `<hr …/>` variants collapse to `<hr>`.
+    fixedHtml = [fixedHtml stringByReplacingOccurrencesOfString:@"<hr/>"
+                                                     withString:@"<hr>"];
+    fixedHtml = [fixedHtml stringByReplacingOccurrencesOfString:@"<hr />"
+                                                     withString:@"<hr>"];
+
     // remove <p> tags around <br>
     fixedHtml = [fixedHtml stringByReplacingOccurrencesOfString:@"<p><br>"
                                                      withString:@"<br>"];
@@ -376,6 +388,12 @@
 
     // tags that have to be in separate lines
     fixedHtml = [self stringByAddingNewlinesToTag:@"<br>"
+                                         inString:fixedHtml
+                                          leading:YES
+                                         trailing:YES];
+    // The horizontal rule is a block element — it must occupy its own line so
+    // its object-replacement char ends up alone on a paragraph.
+    fixedHtml = [self stringByAddingNewlinesToTag:@"<hr>"
                                          inString:fixedHtml
                                           leading:YES
                                          trailing:YES];
@@ -610,14 +628,6 @@
   if (cellErr != nil || cellRe == nil)
     return rows;
 
-  NSError *tagsErr = nil;
-  NSRegularExpression *tagsRe =
-      [NSRegularExpression regularExpressionWithPattern:@"<[^>]+>"
-                                                options:0
-                                                  error:&tagsErr];
-  if (tagsErr != nil || tagsRe == nil)
-    return rows;
-
   NSArray<NSTextCheckingResult *> *trMatches =
       [trRe matchesInString:rawHtml
                     options:0
@@ -632,30 +642,13 @@
     for (NSTextCheckingResult *cellMatch in cellMatches) {
       NSString *cellInner =
           [trInner substringWithRange:[cellMatch rangeAtIndex:1]];
-      NSString *noTags = [tagsRe
-          stringByReplacingMatchesInString:cellInner
-                                   options:0
-                                     range:NSMakeRange(0, cellInner.length)
-                              withTemplate:@""];
-      NSString *decoded = [self decodeCellEntities:noTags];
-      // Collapse runs of whitespace (newlines, multiple spaces) to a
-      // single space so a multi-line cell stays on one line in the
-      // preview.
-      NSError *wsErr = nil;
-      NSRegularExpression *wsRe =
-          [NSRegularExpression regularExpressionWithPattern:@"\\s+"
-                                                    options:0
-                                                      error:&wsErr];
-      if (wsRe != nil) {
-        decoded = [wsRe
-            stringByReplacingMatchesInString:decoded
-                                     options:0
-                                       range:NSMakeRange(0, decoded.length)
-                                withTemplate:@" "];
-      }
-      decoded = [decoded stringByTrimmingCharactersInSet:
-                             [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-      [cells addObject:decoded];
+      // Keep the cell's INNER HTML (trimmed of surrounding whitespace). The
+      // TableAttachment renderer parses it into a styled string so bold /
+      // italic / underline / colour authored in a cell render in the table.
+      NSString *cellHtml =
+          [cellInner stringByTrimmingCharactersInSet:
+                         [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+      [cells addObject:cellHtml];
     }
     if (cells.count > 0) {
       [rows addObject:cells];
@@ -850,6 +843,24 @@
       if ([currentTagName isEqualToString:@"br"]) {
         lastTagWasBr = YES;
         // do nothing, we don't include these tags in styles
+      } else if ([currentTagName isEqualToString:@"hr"]) {
+        // Horizontal rule: a void block element. Like images it has no inner
+        // text and occupies a single object-replacement character (inserted
+        // later by the style applier), so it participates in
+        // precedingImageCount. <hr> has no closing tag, so we record and
+        // finalize it immediately on open.
+        if (!closingTag) {
+          lastTagWasBr = NO;
+          NSMutableArray *tagArr = [[NSMutableArray alloc] init];
+          [tagArr addObject:[NSNumber numberWithInteger:plainText.length]];
+          [tagArr addObject:[NSNumber numberWithInteger:precedingImageCount]];
+          ongoingTags[@"hr"] = tagArr;
+          [self finalizeTagEntry:currentTagName
+                         ongoingTags:ongoingTags
+              initiallyProcessedTags:initiallyProcessedTags
+                           plainText:plainText
+                 precedingImageCount:&precedingImageCount];
+        }
       } else if ([currentTagName isEqualToString:@"li"]) {
         if (!closingTag) {
           // Opening tag <li>
@@ -1125,6 +1136,16 @@
         hexColor = [params substringWithRange:[bgMatch rangeAtIndex:1]];
       }
       stylePair.styleValue = hexColor;
+    } else if ([tagName isEqualToString:@"hr"]) {
+      // Zero-length range at the rule's location; the applier inserts the
+      // object-replacement char + attachment. The sentinel value just marks
+      // presence (the rule carries no payload).
+      [styleArr addObject:@([HorizontalRuleStyle getType])];
+      stylePair.styleValue = @YES;
+      stylePair.rangeValue = tagRangeValue;
+      [styleArr addObject:stylePair];
+      [processedStyles addObject:styleArr];
+      continue;
     } else if ([tagName isEqualToString:@"img"]) {
       NSRegularExpression *srcRegex =
           [NSRegularExpression regularExpressionWithPattern:@"src=\"([^\"]+)\""
@@ -1193,6 +1214,35 @@
         NSString *heightString =
             [params substringWithRange:[heightMatch rangeAtIndex:1]];
         imageData.height = [heightString floatValue];
+      }
+
+      NSRegularExpression *captionRegex = [NSRegularExpression
+          regularExpressionWithPattern:@"data-caption=\"([^\"]*)\""
+                               options:0
+                                 error:nil];
+      NSTextCheckingResult *captionMatch =
+          [captionRegex firstMatchInString:params
+                                   options:0
+                                     range:NSMakeRange(0, params.length)];
+      if (captionMatch) {
+        NSString *captionString =
+            [params substringWithRange:[captionMatch rangeAtIndex:1]];
+        // Reverse the serializer's attribute escaping (&amp; last).
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&quot;"
+                                                     withString:@"\""];
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&lt;"
+                                                     withString:@"<"];
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&gt;"
+                                                     withString:@">"];
+        captionString =
+            [captionString stringByReplacingOccurrencesOfString:@"&amp;"
+                                                     withString:@"&"];
+        if (captionString.length > 0) {
+          imageData.caption = captionString;
+        }
       }
 
       stylePair.styleValue = imageData;
@@ -1298,6 +1348,27 @@
       [styleArr addObject:@([BlockQuoteStyle getType])];
     } else if ([tagName isEqualToString:@"codeblock"]) {
       [styleArr addObject:@([CodeBlockStyle getType])];
+    } else if ([tagName isEqualToString:@"span"]) {
+      // AI track-changes marks round-trip as <span data-ai-suggestion> /
+      // <span data-ai-flag>. Any other <span> is dropped (falls through).
+      NSString *suggestionStatus = [self aiAttrValue:@"data-ai-suggestion"
+                                                  in:params];
+      NSString *flagStatus = [self aiAttrValue:@"data-ai-flag" in:params];
+      if (suggestionStatus == nullptr && flagStatus == nullptr) {
+        continue;
+      }
+      BOOL isFlag = flagStatus != nullptr;
+      [styleArr addObject:@(isFlag ? [AiFlagStyle getType]
+                                   : [AiSuggestionStyle getType])];
+      AiMarkParams *aiParams = [[AiMarkParams alloc] init];
+      aiParams.aiId = [self aiAttrValue:@"data-ai-id" in:params] ?: @"";
+      aiParams.status = (isFlag ? flagStatus : suggestionStatus) ?: @"pending";
+      aiParams.model = [self aiAttrValue:@"data-ai-model" in:params] ?: @"";
+      aiParams.explanation =
+          [self aiUnescapeAttr:[self aiAttrValue:@"data-ai-explanation"
+                                              in:params]]
+              ?: @"";
+      stylePair.styleValue = aiParams;
     } else {
       // some other external tags like span just don't get put into the
       // processed styles
@@ -1455,7 +1526,8 @@
         // append closing tags
         for (NSNumber *style in sortedEndedStyles) {
           if ([style isEqualToNumber:@([ImageStyle getType])] ||
-              [style isEqualToNumber:@([TableStyle getType])]) {
+              [style isEqualToNumber:@([TableStyle getType])] ||
+              [style isEqualToNumber:@([HorizontalRuleStyle getType])]) {
             continue;
           }
           NSString *tagContent = [self tagContentForStyle:style
@@ -1661,9 +1733,10 @@
       // append closing tags
       for (NSNumber *style in sortedEndedStyles) {
         if ([style isEqualToNumber:@([ImageStyle getType])] ||
-            [style isEqualToNumber:@([TableStyle getType])]) {
-          // Self-closed: image's <…/> + table's full raw HTML both got
-          // emitted on the open pass.
+            [style isEqualToNumber:@([TableStyle getType])] ||
+            [style isEqualToNumber:@([HorizontalRuleStyle getType])]) {
+          // Self-closed / void: image's <…/>, table's full raw HTML, and the
+          // rule's <hr> all got emitted on the open pass.
           continue;
         }
         NSString *tagContent = [self tagContentForStyle:style
@@ -1699,6 +1772,11 @@
           // so the closing-tag pass doesn't try to also emit `</table>`.
           [result appendString:tagContent];
           [currentActiveStyles removeObject:@([TableStyle getType])];
+        } else if ([style isEqualToNumber:@([HorizontalRuleStyle getType])]) {
+          // Void element — emit a bare `<hr>` (no closing tag) and drop the
+          // active-style flag so the closing pass never tries to emit `</hr>`.
+          [result appendString:[NSString stringWithFormat:@"<%@>", tagContent]];
+          [currentActiveStyles removeObject:@([HorizontalRuleStyle getType])];
         } else {
           [result appendString:[NSString stringWithFormat:@"<%@>", tagContent]];
         }
@@ -1725,7 +1803,8 @@
 
     // append closing tags
     for (NSNumber *style in sortedEndedStyles) {
-      if ([style isEqualToNumber:@([ImageStyle getType])]) {
+      if ([style isEqualToNumber:@([ImageStyle getType])] ||
+          [style isEqualToNumber:@([HorizontalRuleStyle getType])]) {
         continue;
       }
       NSString *tagContent =
@@ -1800,6 +1879,14 @@
                              options:0
                                range:NSMakeRange(0, result.length)];
 
+  // the horizontal rule sits alone on its line, so the paragraph pass wraps it
+  // as <p><hr></p>; lift it back to a top-level <hr> so the web editor reads it
+  // as a block (TipTap's horizontal rule is a top-level node, not inside <p>).
+  [result replaceOccurrencesOfString:@"<p><hr></p>"
+                          withString:@"<hr>"
+                             options:0
+                               range:NSMakeRange(0, result.length)];
+
   // replace empty <p></p> into <br> in the very end
   [result replaceOccurrencesOfString:@"<p></p>"
                           withString:@"<br>"
@@ -1827,9 +1914,24 @@
       if (imageStyle != nullptr) {
         ImageData *data = [imageStyle getImageDataAt:location];
         if (data != nullptr && data.uri != nullptr) {
-          return [NSString
+          NSString *tag = [NSString
               stringWithFormat:@"img src=\"%@\" width=\"%f\" height=\"%f\"",
                                data.uri, data.width, data.height];
+          // Caption round-trips as data-caption (1:1 with the web editor).
+          if (data.caption != nil && data.caption.length > 0) {
+            NSString *escaped = data.caption;
+            escaped = [escaped stringByReplacingOccurrencesOfString:@"&"
+                                                         withString:@"&amp;"];
+            escaped = [escaped stringByReplacingOccurrencesOfString:@"\""
+                                                         withString:@"&quot;"];
+            escaped = [escaped stringByReplacingOccurrencesOfString:@"<"
+                                                         withString:@"&lt;"];
+            escaped = [escaped stringByReplacingOccurrencesOfString:@">"
+                                                         withString:@"&gt;"];
+            tag =
+                [tag stringByAppendingFormat:@" data-caption=\"%@\"", escaped];
+          }
+          return tag;
         }
       }
       return @"img";
@@ -1854,6 +1956,11 @@
     } else {
       return @"";
     }
+  } else if ([style isEqualToNumber:@([HorizontalRuleStyle getType])]) {
+    // Emitted bare (no trailing slash) on the opening pass; the closing pass
+    // skips it. The surrounding `<p>…</p>` is unwrapped to a top-level `<hr>`
+    // in the final cleanup.
+    return @"hr";
   } else if ([style isEqualToNumber:@([UnderlineStyle getType])]) {
     return @"u";
   } else if ([style isEqualToNumber:@([StrikethroughStyle getType])]) {
@@ -1995,8 +2102,87 @@
              [style isEqualToNumber:@([CodeBlockStyle getType])]) {
     // blockquotes and codeblock use <p> tags the same way lists use <li>
     return [NSString stringWithFormat:@"p%@", cssStyleString];
+  } else if ([style isEqualToNumber:@([AiSuggestionStyle getType])]) {
+    if (openingTag) {
+      AiSuggestionStyle *s =
+          (AiSuggestionStyle *)host.stylesDict[@([AiSuggestionStyle getType])];
+      AiMarkParams *p = [s paramsAt:location];
+      if (p != nullptr) {
+        return
+            [NSString stringWithFormat:
+                          @"span data-ai-suggestion=\"%@\" data-ai-id=\"%@\" "
+                          @"data-ai-model=\"%@\"",
+                          p.status ?: @"pending", p.aiId ?: @"",
+                          [self aiEscapeAttr:p.model] ?: @""];
+      }
+    }
+    return @"span";
+  } else if ([style isEqualToNumber:@([AiFlagStyle getType])]) {
+    if (openingTag) {
+      AiFlagStyle *s = (AiFlagStyle *)host.stylesDict[@([AiFlagStyle getType])];
+      AiMarkParams *p = [s paramsAt:location];
+      if (p != nullptr) {
+        return [NSString
+            stringWithFormat:@"span data-ai-flag=\"%@\" data-ai-id=\"%@\" "
+                             @"data-ai-explanation=\"%@\"",
+                             p.status ?: @"pending", p.aiId ?: @"",
+                             [self aiEscapeAttr:p.explanation] ?: @""];
+      }
+    }
+    return @"span";
   }
   return @"";
+}
+
+// MARK: - AI mark HTML attribute helpers
+
+// Value of a hyphenated attribute (e.g. data-ai-id) from a raw tag param
+// string; nil when the attribute is absent.
++ (NSString *)aiAttrValue:(NSString *)name in:(NSString *)params {
+  if (params == nullptr || params.length == 0) {
+    return nullptr;
+  }
+  NSString *pattern = [NSString
+      stringWithFormat:@"%@\\s*=\\s*\"([^\"]*)\"",
+                       [NSRegularExpression escapedPatternForString:name]];
+  NSRegularExpression *re =
+      [NSRegularExpression regularExpressionWithPattern:pattern
+                                                options:0
+                                                  error:nullptr];
+  NSTextCheckingResult *m =
+      [re firstMatchInString:params
+                     options:0
+                       range:NSMakeRange(0, params.length)];
+  if (m == nullptr) {
+    return nullptr;
+  }
+  return [params substringWithRange:[m rangeAtIndex:1]];
+}
+
+// Escape a value for embedding in a double-quoted HTML attribute (&amp; last).
++ (NSString *)aiEscapeAttr:(NSString *)s {
+  if (s == nullptr) {
+    return @"";
+  }
+  NSString *out = [s stringByReplacingOccurrencesOfString:@"&"
+                                               withString:@"&amp;"];
+  out = [out stringByReplacingOccurrencesOfString:@"\"" withString:@"&quot;"];
+  out = [out stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"];
+  out = [out stringByReplacingOccurrencesOfString:@">" withString:@"&gt;"];
+  return out;
+}
+
+// Reverse aiEscapeAttr: (&amp; last).
++ (NSString *)aiUnescapeAttr:(NSString *)s {
+  if (s == nullptr) {
+    return nullptr;
+  }
+  NSString *out = [s stringByReplacingOccurrencesOfString:@"&quot;"
+                                               withString:@"\""];
+  out = [out stringByReplacingOccurrencesOfString:@"&lt;" withString:@"<"];
+  out = [out stringByReplacingOccurrencesOfString:@"&gt;" withString:@">"];
+  out = [out stringByReplacingOccurrencesOfString:@"&amp;" withString:@"&"];
+  return out;
 }
 
 + (NSString *)prepareCssStyleString:(NSInteger)location

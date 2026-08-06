@@ -1,4 +1,5 @@
 #pragma once
+#import "AiMarkParams.h"
 #import "ImageData.h"
 #import "LinkData.h"
 #import "MentionParams.h"
@@ -116,6 +117,7 @@
           withSelection:(BOOL)withSelection
          withDirtyRange:(BOOL)withDirtyRange;
 - (ImageData *)getImageDataAt:(NSUInteger)location;
+- (void)setSelectedImageCaption:(NSString *)caption;
 @end
 
 @interface TableStyle : StyleBase
@@ -136,4 +138,46 @@
 - (void)addHighlightAtRange:(NSRange)range color:(UIColor *)color;
 - (void)removeHighlightInRange:(NSRange)range;
 - (UIColor *)getHighlightColorAt:(NSUInteger)location;
+@end
+
+@interface HorizontalRuleStyle : StyleBase
+// Inserts a horizontal rule (`<hr>`) as a single object-replacement character
+// carrying a HorizontalRuleAttachment that draws a full-width divider line.
+// The rule is forced onto its own line (newlines added around it as needed).
+- (void)insertHorizontalRule;
+- (void)addHorizontalRuleAtRange:(NSRange)range
+                   withSelection:(BOOL)withSelection
+                  withDirtyRange:(BOOL)withDirtyRange;
+// YES when the location carries the horizontal-rule attribute.
+- (BOOL)isHorizontalRuleAt:(NSUInteger)location;
+@end
+
+// Shared base for the two AI track-changes marks. `getKey`/`aiKind` and the
+// pending/accepted visual are provided by the concrete subclasses below.
+@interface AiMarkStyle : StyleBase
+// 'suggestion' | 'flag' — used by the tap handler to label the emitted event.
+- (NSString *)aiKind;
+// Strip the underline/background this mark paints, so accept/claim/reject don't
+// leave a stale highlight behind.
+- (void)clearVisualInRange:(NSRange)range;
+// Payload at a location (nil when the location carries no mark of this kind).
+- (AiMarkParams *)paramsAt:(NSUInteger)location;
+// Apply the mark (with payload) over an explicit range (the enrich apply
+// phase).
+- (void)applyAiMarkAtRange:(NSRange)range params:(AiMarkParams *)params;
+// Review actions keyed by aiId.
+- (void)acceptId:(NSString *)aiId; // status -> accepted, keep text + mark
+- (void)stripId:
+    (NSString *)aiId; // remove mark, keep text (claim / flag reject)
+- (void)deleteId:(NSString *)aiId; // delete the marked text (suggestion reject)
+// Bulk actions over every pending mark of this kind.
+- (void)acceptAllPending;
+- (void)deleteAllPending;
+- (void)stripAllPending;
+@end
+
+@interface AiSuggestionStyle : AiMarkStyle
+@end
+
+@interface AiFlagStyle : AiMarkStyle
 @end

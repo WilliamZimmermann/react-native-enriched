@@ -5,6 +5,8 @@ import com.swmansion.enriched.common.spans.EnrichedImageSpan
 import com.swmansion.enriched.common.spans.EnrichedTableData
 import com.swmansion.enriched.common.spans.EnrichedTableSpan
 import com.swmansion.enriched.common.spans.tableWidth
+import com.swmansion.enriched.textinput.spans.EnrichedInputAiFlagSpan
+import com.swmansion.enriched.textinput.spans.EnrichedInputAiSuggestionSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputAlignmentSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputBlockQuoteSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputBoldSpan
@@ -17,6 +19,7 @@ import com.swmansion.enriched.textinput.spans.EnrichedInputH3Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH4Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH5Span
 import com.swmansion.enriched.textinput.spans.EnrichedInputH6Span
+import com.swmansion.enriched.textinput.spans.EnrichedInputHorizontalRuleSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputImageSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputInlineCodeSpan
 import com.swmansion.enriched.textinput.spans.EnrichedInputItalicSpan
@@ -55,6 +58,20 @@ class EnrichedTextInputSpannableFactory : EnrichedSpanFactory<HtmlStyle> {
     style: HtmlStyle,
   ) = EnrichedInputMentionSpan(text, indicator, attributes, style)
 
+  override fun createAiSuggestionSpan(
+    aiId: String,
+    status: String,
+    model: String,
+    style: HtmlStyle,
+  ) = EnrichedInputAiSuggestionSpan(aiId, status, model, style)
+
+  override fun createAiFlagSpan(
+    aiId: String,
+    status: String,
+    explanation: String,
+    style: HtmlStyle,
+  ) = EnrichedInputAiFlagSpan(aiId, status, explanation, style)
+
   override fun createImageSpan(
     source: String,
     width: Int,
@@ -66,6 +83,7 @@ class EnrichedTextInputSpannableFactory : EnrichedSpanFactory<HtmlStyle> {
     data: EnrichedTableData,
     style: HtmlStyle,
   ) = EnrichedTableSpan(data, tableWidth(), style.tableHeaderBackgroundColor)
+  override fun createHorizontalRuleSpan() = EnrichedInputHorizontalRuleSpan()
 
   override fun createH1Span(style: HtmlStyle) = EnrichedInputH1Span(style)
 

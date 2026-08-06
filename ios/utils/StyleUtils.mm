@@ -92,7 +92,13 @@
       @([CheckboxListStyle getType])
     ],
     @([ImageStyle getType]) :
-        @[ @([LinkStyle getType]), @([MentionStyle getType]) ]
+        @[ @([LinkStyle getType]), @([MentionStyle getType]) ],
+    @([HorizontalRuleStyle getType]) :
+        @[ @([LinkStyle getType]), @([MentionStyle getType]) ],
+    // AI marks are overlays applied programmatically — they conflict with
+    // nothing and coexist with any inline/block formatting.
+    @([AiSuggestionStyle getType]) : @[],
+    @([AiFlagStyle getType]) : @[]
   };
 }
 
@@ -102,15 +108,17 @@
     @([ItalicStyle getType]) : @[ @([CodeBlockStyle getType]) ],
     @([UnderlineStyle getType]) : @[ @([CodeBlockStyle getType]) ],
     @([StrikethroughStyle getType]) : @[ @([CodeBlockStyle getType]) ],
-    @([InlineCodeStyle getType]) :
-        @[ @([CodeBlockStyle getType]), @([ImageStyle getType]) ],
+    @([InlineCodeStyle getType]) : @[
+      @([CodeBlockStyle getType]), @([ImageStyle getType]),
+      @([HorizontalRuleStyle getType])
+    ],
     @([LinkStyle getType]) : @[
       @([CodeBlockStyle getType]), @([ImageStyle getType]),
-      @([InlineCodeStyle getType])
+      @([HorizontalRuleStyle getType]), @([InlineCodeStyle getType])
     ],
     @([MentionStyle getType]) : @[
       @([CodeBlockStyle getType]), @([ImageStyle getType]),
-      @([InlineCodeStyle getType])
+      @([HorizontalRuleStyle getType]), @([InlineCodeStyle getType])
     ],
     @([H1Style getType]) : @[],
     @([H2Style getType]) : @[],
@@ -125,25 +133,43 @@
     @([DirectionStyle getType]) : @[],
     @([BlockQuoteStyle getType]) : @[],
     @([CodeBlockStyle getType]) : @[],
-    @([ImageStyle getType]) : @[ @([InlineCodeStyle getType]) ]
+    @([ImageStyle getType]) : @[ @([InlineCodeStyle getType]) ],
+    @([HorizontalRuleStyle getType]) : @[ @([InlineCodeStyle getType]) ],
+    @([AiSuggestionStyle getType]) : @[],
+    @([AiFlagStyle getType]) : @[]
   };
 }
 
 + (NSDictionary *)stylesDictForHost:(id<EnrichedViewHost>)host
                             isInput:(BOOL)isInput {
   NSArray<Class> *baseClasses = @[
-    [BoldStyle class],        [ItalicStyle class],
-    [UnderlineStyle class],   [StrikethroughStyle class],
-    [InlineCodeStyle class],  [LinkStyle class],
-    [MentionStyle class],     [H1Style class],
-    [H2Style class],          [H3Style class],
-    [H4Style class],          [H5Style class],
-    [H6Style class],          [UnorderedListStyle class],
-    [OrderedListStyle class], [CheckboxListStyle class],
-    [AlignmentStyle class],   [DirectionStyle class],
-    [BlockQuoteStyle class],  [CodeBlockStyle class],
-    [ImageStyle class],       [TableStyle class],
-    [HighlightStyle class],   [FontSizeStyle class]
+    [BoldStyle class],
+    [ItalicStyle class],
+    [UnderlineStyle class],
+    [StrikethroughStyle class],
+    [InlineCodeStyle class],
+    [LinkStyle class],
+    [MentionStyle class],
+    [H1Style class],
+    [H2Style class],
+    [H3Style class],
+    [H4Style class],
+    [H5Style class],
+    [H6Style class],
+    [UnorderedListStyle class],
+    [OrderedListStyle class],
+    [CheckboxListStyle class],
+    [AlignmentStyle class],
+    [DirectionStyle class],
+    [BlockQuoteStyle class],
+    [CodeBlockStyle class],
+    [ImageStyle class],
+    [TableStyle class],
+    [HorizontalRuleStyle class],
+    [HighlightStyle class],
+    [FontSizeStyle class],
+    [AiSuggestionStyle class],
+    [AiFlagStyle class]
   ];
 
   // No viewer counterpart for TableStyle yet — the read-only viewer flavour
@@ -173,8 +199,11 @@
     [EnrichedTextCodeBlockStyle class],
     [EnrichedTextImageStyle class],
     [TableStyle class],
+    [HorizontalRuleStyle class],
     [HighlightStyle class],
-    [FontSizeStyle class]
+    [FontSizeStyle class],
+    [AiSuggestionStyle class],
+    [AiFlagStyle class]
   ];
 
   NSMutableDictionary *dict = [NSMutableDictionary new];

@@ -14,6 +14,7 @@
 #import "StringExtension.h"
 #import "StyleHeaders.h"
 #import "StyleUtils.h"
+#import "TableCellHitTestUtils.h"
 #import "TextBlockTapGestureRecognizer.h"
 #import "TextInsertionUtils.h"
 #import "UIView+React.h"
@@ -35,6 +36,19 @@
   }
 
 using namespace facebook::react;
+
+// Joins column-width fractions into the "0.3,0.4,0.3" wire form for the
+// onTableCellTap event (empty string when there are none).
+static std::string katavFractionsString(NSArray<NSNumber *> *fractions) {
+  if (fractions.count == 0) {
+    return std::string();
+  }
+  NSMutableArray<NSString *> *parts = [NSMutableArray array];
+  for (NSNumber *f in fractions) {
+    [parts addObject:[NSString stringWithFormat:@"%.4f", f.doubleValue]];
+  }
+  return std::string([[parts componentsJoinedByString:@","] UTF8String]);
+}
 
 @interface EnrichedTextInputView () <
     RCTEnrichedTextInputViewViewProtocol, UITextViewDelegate,
@@ -65,6 +79,9 @@ using namespace facebook::react;
   NSDictionary<NSAttributedStringKey, id> *_capturedAttributesBeforeChange;
   NSString *_recentlyEmittedAlignment;
   NSString *_recentlyEmittedDirection;
+  // The configured selection tint (from the selectionColor prop). Restored when
+  // the selection isn't over a highlight; see textViewDidChangeSelection:.
+  UIColor *_baseSelectionTintColor;
 }
 
 @synthesize blockEmitting = blockEmitting;
@@ -814,6 +831,9 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     } else {
       textView.tintColor = nullptr;
     }
+    // Remember the configured tint so textViewDidChangeSelection: can restore
+    // it after temporarily swapping to the over-highlight selection color.
+    _baseSelectionTintColor = textView.tintColor;
   }
 
   if (newViewProps.returnKeyType != oldViewProps.returnKeyType) {
@@ -1168,6 +1188,15 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
       _recentlyEmittedAlignment = currentAlignment;
       _recentlyEmittedDirection = currentDirection;
 
+      ImageStyle *imageStyleForCaption =
+          (ImageStyle *)stylesDict[@([ImageStyle getType])];
+      ImageData *selectedImageData =
+          [imageStyleForCaption getImageDataAt:textView.selectedRange.location];
+      NSString *selectedImageCaption =
+          (selectedImageData != nullptr && selectedImageData.caption != nil)
+              ? selectedImageData.caption
+              : @"";
+
       emitter->onChangeState(
           {.bold = GET_STYLE_STATE([BoldStyle getType]),
            .italic = GET_STYLE_STATE([ItalicStyle getType]),
@@ -1190,7 +1219,8 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
            .checkboxList = GET_STYLE_STATE([CheckboxListStyle getType]),
            .highlight = GET_STYLE_STATE([HighlightStyle getType]),
            .alignment = [currentAlignment UTF8String],
-           .direction = [currentDirection UTF8String]});
+           .direction = [currentDirection UTF8String],
+           .selectedImageCaption = [selectedImageCaption UTF8String]});
     }
   }
 
@@ -1319,6 +1349,46 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     NSInteger end = [((NSNumber *)args[1]) integerValue];
     // The only color formatting is highlight (background); reuse its removal.
     [self removeHighlightAt:start end:end];
+  } else if ([commandName isEqualToString:@"applyAiSuggestion"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    NSString *aiId = (NSString *)args[2];
+    NSString *status = (NSString *)args[3];
+    NSString *model = (NSString *)args[4];
+    [self applyAiMark:AiSuggestion
+                start:start
+                  end:end
+                 aiId:aiId
+               status:status
+                model:model
+          explanation:@""];
+  } else if ([commandName isEqualToString:@"applyAiFlag"]) {
+    NSInteger start = [((NSNumber *)args[0]) integerValue];
+    NSInteger end = [((NSNumber *)args[1]) integerValue];
+    NSString *aiId = (NSString *)args[2];
+    NSString *status = (NSString *)args[3];
+    NSString *explanation = (NSString *)args[4];
+    [self applyAiMark:AiFlag
+                start:start
+                  end:end
+                 aiId:aiId
+               status:status
+                model:@""
+          explanation:explanation];
+  } else if ([commandName isEqualToString:@"acceptAiMark"]) {
+    [self acceptAiMarkWithId:(NSString *)args[0]];
+  } else if ([commandName isEqualToString:@"rejectAiMark"]) {
+    NSString *aiId = (NSString *)args[0];
+    BOOL deleteText = [((NSNumber *)args[1]) boolValue];
+    [self rejectAiMarkWithId:aiId deleteText:deleteText];
+  } else if ([commandName isEqualToString:@"claimAiMark"]) {
+    [self claimAiMarkWithId:(NSString *)args[0]];
+  } else if ([commandName isEqualToString:@"acceptAllAiSuggestions"]) {
+    [self acceptAllAiSuggestions];
+  } else if ([commandName isEqualToString:@"rejectAllAiSuggestions"]) {
+    [self rejectAllAiSuggestions];
+  } else if ([commandName isEqualToString:@"rejectAllAiFlags"]) {
+    [self rejectAllAiFlags];
   } else if ([commandName isEqualToString:@"addMention"]) {
     NSString *indicator = (NSString *)args[0];
     NSString *text = (NSString *)args[1];
@@ -1360,10 +1430,20 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
     CGFloat imgHeight = [(NSNumber *)args[2] floatValue];
 
     [self addImage:uri width:imgWidth height:imgHeight];
+  } else if ([commandName isEqualToString:@"setSelectedImageCaption"]) {
+    NSString *caption = (NSString *)args[0];
+    [self setSelectedImageCaption:caption];
+  } else if ([commandName isEqualToString:@"insertHorizontalRule"]) {
+    [self insertHorizontalRule];
   } else if ([commandName isEqualToString:@"setSelection"]) {
     NSInteger start = [((NSNumber *)args[0]) integerValue];
     NSInteger end = [((NSNumber *)args[1]) integerValue];
     [self setCustomSelection:start end:end];
+  } else if ([commandName isEqualToString:@"focusTableCell"]) {
+    NSInteger tableIndex = [((NSNumber *)args[0]) integerValue];
+    NSInteger row = [((NSNumber *)args[1]) integerValue];
+    NSInteger col = [((NSNumber *)args[2]) integerValue];
+    [self focusTableCellAtIndex:tableIndex row:row col:col];
   } else if ([commandName isEqualToString:@"requestHTML"]) {
     NSInteger requestId = [((NSNumber *)args[0]) integerValue];
     [self requestHTML:requestId];
@@ -1680,6 +1760,21 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   }
 }
 
+// Thin entry points for the Cmd-B/I/U key commands handled on the text view.
+// They route through the exact same path as the toolbar buttons and the JS
+// `toggleBold` / `toggleItalic` / `toggleUnderline` commands.
+- (void)katavToggleBold {
+  [self toggleRegularStyle:[BoldStyle getType]];
+}
+
+- (void)katavToggleItalic {
+  [self toggleRegularStyle:[ItalicStyle getType]];
+}
+
+- (void)katavToggleUnderline {
+  [self toggleRegularStyle:[UnderlineStyle getType]];
+}
+
 - (void)toggleCheckboxList:(BOOL)checked {
   CheckboxListStyle *style =
       (CheckboxListStyle *)stylesDict[@([CheckboxListStyle getType])];
@@ -1869,6 +1964,13 @@ static UIColor *katavParseHexColor(NSString *hex) {
   NSInteger rangeStart = MAX(0, MIN(start, end));
   NSInteger rangeEnd = MIN(textLength, MAX(start, end));
   if (rangeEnd <= rangeStart) {
+    // Empty/stale range from the toolbar (the editor can briefly lose the JS
+    // selection on tap) — fall back to the live native selection.
+    NSRange sel = textView.selectedRange;
+    rangeStart = (NSInteger)sel.location;
+    rangeEnd = MIN(textLength, (NSInteger)(sel.location + sel.length));
+  }
+  if (rangeEnd <= rangeStart) {
     return;
   }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
@@ -1876,24 +1978,136 @@ static UIColor *katavParseHexColor(NSString *hex) {
   [self anyTextMayHaveBeenModified];
 }
 
-// Strip all inline formatting from the range by replacing it with its plain
-// text — the same path "paste as plain text" uses, so the new run carries the
-// default typing attributes (no bold/italic/link/highlight/etc.). Block
-// structure (heading/list/quote) of the surrounding paragraph is preserved.
-- (void)clearFormattingAt:(NSInteger)start end:(NSInteger)end {
+// MARK: - AI track-changes marks
+
+- (AiSuggestionStyle *)aiSuggestionStyle {
+  return (AiSuggestionStyle *)stylesDict[@([AiSuggestionStyle getType])];
+}
+
+- (AiFlagStyle *)aiFlagStyle {
+  return (AiFlagStyle *)stylesDict[@([AiFlagStyle getType])];
+}
+
+- (void)applyAiMark:(StyleType)type
+              start:(NSInteger)start
+                end:(NSInteger)end
+               aiId:(NSString *)aiId
+             status:(NSString *)status
+              model:(NSString *)model
+        explanation:(NSString *)explanation {
+  AiMarkStyle *style = (AiMarkStyle *)stylesDict[@(type)];
+  if (style == nullptr) {
+    return;
+  }
   NSInteger textLength = (NSInteger)textView.textStorage.length;
   NSInteger rangeStart = MAX(0, MIN(start, end));
   NSInteger rangeEnd = MIN(textLength, MAX(start, end));
   if (rangeEnd <= rangeStart) {
     return;
   }
+  AiMarkParams *params = [[AiMarkParams alloc] init];
+  params.aiId = aiId ?: @"";
+  params.status = status.length > 0 ? status : @"pending";
+  params.model = model ?: @"";
+  params.explanation = explanation ?: @"";
+  [style applyAiMarkAtRange:NSMakeRange(rangeStart, rangeEnd - rangeStart)
+                     params:params];
+  [self anyTextMayHaveBeenModified];
+}
+
+// aiIds are unique across kinds, so applying the action to both styles is safe:
+// only the style that actually carries the id mutates, the other no-ops.
+- (void)acceptAiMarkWithId:(NSString *)aiId {
+  [[self aiSuggestionStyle] acceptId:aiId];
+  [[self aiFlagStyle] acceptId:aiId];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)rejectAiMarkWithId:(NSString *)aiId deleteText:(BOOL)deleteText {
+  if (deleteText) {
+    [[self aiSuggestionStyle] deleteId:aiId];
+    [[self aiFlagStyle] deleteId:aiId];
+  } else {
+    [[self aiSuggestionStyle] stripId:aiId];
+    [[self aiFlagStyle] stripId:aiId];
+  }
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)claimAiMarkWithId:(NSString *)aiId {
+  [[self aiSuggestionStyle] stripId:aiId];
+  [[self aiFlagStyle] stripId:aiId];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)acceptAllAiSuggestions {
+  [[self aiSuggestionStyle] acceptAllPending];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)rejectAllAiSuggestions {
+  [[self aiSuggestionStyle] deleteAllPending];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)rejectAllAiFlags {
+  [[self aiFlagStyle] stripAllPending];
+  [self anyTextMayHaveBeenModified];
+}
+
+// Strip ALL inline formatting the user perceives — bold / italic / underline /
+// strikethrough / inline code / link AND highlight ("marcação") — from the
+// range, leaving paragraph structure (heading / list / quote) intact.
+//
+// Inline styles are tracked as custom attributes (EnrichedBold, …); the visual
+// font traits are DERIVED from them by InputAttributesManager when it
+// reprocesses a dirty range. So clearing the visual attributes directly (or
+// re-inserting plain text) doesn't stick — the styling is rebuilt from the
+// custom attributes, which is why earlier attempts left bold in place. We
+// instead remove each style through the SAME path the toolbar uses to toggle it
+// off: drop the custom attribute and mark the range dirty so the manager
+// rebuilds the run without it. Highlight is the background-color attribute, so
+// it's dropped through its own removal path.
+- (void)clearFormattingAt:(NSInteger)start end:(NSInteger)end {
+  NSInteger textLength = (NSInteger)textView.textStorage.length;
+  NSInteger rangeStart = MAX(0, MIN(start, end));
+  NSInteger rangeEnd = MIN(textLength, MAX(start, end));
+  if (rangeEnd <= rangeStart) {
+    // Empty/stale range from the toolbar (the editor can briefly lose the JS
+    // selection on tap) — fall back to the live native selection.
+    NSRange sel = textView.selectedRange;
+    rangeStart = (NSInteger)sel.location;
+    rangeEnd = MIN(textLength, (NSInteger)(sel.location + sel.length));
+  }
+  if (rangeEnd <= rangeStart) {
+    return;
+  }
   NSRange range = NSMakeRange(rangeStart, rangeEnd - rangeStart);
-  NSString *plainText = [textView.textStorage.string substringWithRange:range];
-  [TextInsertionUtils replaceText:plainText
-                               at:range
-             additionalAttributes:nullptr
-                             host:self
-                    withSelection:YES];
+
+  // Inline styles (incl. link) via the toolbar's toggle-off path.
+  StyleType inlineTypes[] = {
+      [BoldStyle getType],       [ItalicStyle getType],
+      [UnderlineStyle getType],  [StrikethroughStyle getType],
+      [InlineCodeStyle getType], [LinkStyle getType],
+  };
+  for (NSUInteger i = 0; i < sizeof(inlineTypes) / sizeof(inlineTypes[0]);
+       i++) {
+    StyleBase *style = stylesDict[@(inlineTypes[i])];
+    if (style != nullptr) {
+      // remove: is a no-op where the style is absent and removes it wherever it
+      // occurs in the range — no need to pre-check coverage.
+      [style remove:range withDirtyRange:YES];
+    }
+  }
+
+  // Highlight ("marcação") is the background-color attribute — drop it too so a
+  // single "clear formatting" tap removes everything the user sees.
+  HighlightStyle *highlightStyle =
+      (HighlightStyle *)stylesDict[@([HighlightStyle getType])];
+  if (highlightStyle != nullptr) {
+    [highlightStyle removeHighlightInRange:range];
+  }
+
   [self anyTextMayHaveBeenModified];
 }
 
@@ -1952,6 +2166,31 @@ static UIColor *katavParseHexColor(NSString *hex) {
                                           range:textView.selectedRange
                                         forHost:self]) {
     [imageStyleClass addImage:uri width:width height:height];
+    [self anyTextMayHaveBeenModified];
+  }
+}
+
+- (void)setSelectedImageCaption:(NSString *)caption {
+  ImageStyle *imageStyleClass =
+      (ImageStyle *)stylesDict[@([ImageStyle getType])];
+  if (imageStyleClass == nullptr) {
+    return;
+  }
+  [imageStyleClass setSelectedImageCaption:caption];
+  [self anyTextMayHaveBeenModified];
+}
+
+- (void)insertHorizontalRule {
+  HorizontalRuleStyle *hrStyle =
+      (HorizontalRuleStyle *)stylesDict[@([HorizontalRuleStyle getType])];
+  if (hrStyle == nullptr) {
+    return;
+  }
+
+  if ([StyleUtils handleStyleBlocksAndConflicts:[HorizontalRuleStyle getType]
+                                          range:textView.selectedRange
+                                        forHost:self]) {
+    [hrStyle insertHorizontalRule];
     [self anyTextMayHaveBeenModified];
   }
 }
@@ -2203,6 +2442,23 @@ static UIColor *katavParseHexColor(NSString *hex) {
   return [UIMenu menuWithChildren:customActions];
 }
 
+// iOS 17+ presents a SEPARATE context menu for "text items" — links and (the
+// case that bites us) image attachments — via this delegate, independent of
+// editMenuForTextInRange above. A consumer that renders its own image/selection
+// menu sets disableNativeSelectionMenu, so suppress this one too: otherwise
+// tapping a selected image shows the system menu (Copy / Share / Save to
+// Photos…) on top of the JS menu. Returning nil hides the system menu for the
+// item; selection (and the JS menu it drives) is unaffected.
+- (UITextItemMenuConfiguration *)textView:(UITextView *)tv
+             menuConfigurationForTextItem:(UITextItem *)textItem
+                              defaultMenu:(UIMenu *)defaultMenu
+    API_AVAILABLE(ios(17.0)) {
+  if (_disableNativeSelectionMenu) {
+    return nil;
+  }
+  return [UITextItemMenuConfiguration configurationWithMenu:defaultMenu];
+}
+
 - (void)emitOnContextMenuItemPressEvent:(NSString *)itemText {
   auto emitter = [self getEventEmitter];
   if (emitter != nullptr) {
@@ -2355,7 +2611,107 @@ static UIColor *katavParseHexColor(NSString *hex) {
   return YES;
 }
 
+// A deeper, more saturated variant of the given color (~half brightness). Used
+// for the selection tint over a highlight so the highlighted text reads as a
+// distinct, darker band within the selection.
+- (UIColor *)katavDeeperColor:(UIColor *)color {
+  if (color == nil) {
+    return nil;
+  }
+  CGFloat h, s, b, a;
+  if ([color getHue:&h saturation:&s brightness:&b alpha:&a]) {
+    return [UIColor colorWithHue:h
+                      saturation:MIN(1.0, s * 1.15)
+                      brightness:b * 0.5
+                           alpha:a];
+  }
+  return color;
+}
+
+// While the selection overlaps any highlighted (background-color) text, swap
+// the selection tint to a deeper translucent green so the highlighted text
+// stays distinct against the highlight; restore the configured tint otherwise.
+// Fires on every selection change, so the color updates live as the user drags
+// the selection.
+- (void)updateSelectionTintForHighlightOverlap {
+  if (_baseSelectionTintColor == nil) {
+    _baseSelectionTintColor = textView.tintColor;
+  }
+  NSRange sel = textView.selectedRange;
+
+  // A selected inline image shows the JS resize overlay instead of the native
+  // selection. The native selection band is sized to the attachment's RESERVED
+  // glyph box (image height + descender + caption space), so it renders a
+  // second, taller box around the image — worse with a multi-line caption.
+  // Clear the tint while a lone image is selected to hide that band (and its
+  // grab handles); the resize overlay is the only selection affordance.
+  if (sel.length == 1 && sel.location < textView.textStorage.length) {
+    ImageStyle *imageStyle = (ImageStyle *)stylesDict[@([ImageStyle getType])];
+    TableStyle *tableStyle = (TableStyle *)stylesDict[@([TableStyle getType])];
+    BOOL loneImage = imageStyle != nil &&
+                     [imageStyle getImageDataAt:sel.location] != nullptr;
+    // A tapped table selects its ORC (1 char) so the toolbar's table controls
+    // light up; like an image, the native selection band around that glyph is
+    // unwanted chrome — clear the tint so only the table grid shows.
+    BOOL loneTable = tableStyle != nil &&
+                     [tableStyle getTableDataAt:sel.location] != nullptr;
+    if (loneImage || loneTable) {
+      UIColor *clear = [UIColor clearColor];
+      if (![textView.tintColor isEqual:clear]) {
+        textView.tintColor = clear;
+      }
+      return;
+    }
+  }
+
+  UIColor *desired = _baseSelectionTintColor;
+  if (sel.length > 0 &&
+      sel.location + sel.length <= textView.textStorage.length) {
+    __block BOOL overlapsHighlight = NO;
+    [textView.textStorage enumerateAttribute:NSBackgroundColorAttributeName
+                                     inRange:sel
+                                     options:0
+                                  usingBlock:^(id _Nullable value, NSRange r,
+                                               BOOL *_Nonnull stop) {
+                                    if ([value isKindOfClass:[UIColor class]]) {
+                                      overlapsHighlight = YES;
+                                      *stop = YES;
+                                    }
+                                  }];
+    if (overlapsHighlight) {
+      // Deeper green derived from the configured (green) selection tint —
+      // theme-aware, and reads as a darker band over the highlight. UITextView
+      // renders the selection fill at the system alpha, so this stays
+      // translucent. Fall back to a fixed deep green if the base isn't set.
+      desired = [self katavDeeperColor:_baseSelectionTintColor]
+                    ?: [UIColor colorWithRed:0.04
+                                       green:0.36
+                                        blue:0.21
+                                       alpha:1.0];
+    }
+  }
+  if (textView.tintColor != desired && ![textView.tintColor isEqual:desired]) {
+    textView.tintColor = desired;
+  }
+}
+
 - (void)textViewDidChangeSelection:(UITextView *)textView {
+  [self updateSelectionTintForHighlightOverlap];
+
+  [self emitChangeSelectionEvent];
+
+  // manage selection changes
+  [self manageSelectionBasedChanges];
+}
+
+// Computes the current selection's substring + on-screen rect and emits
+// onChangeSelection. Extracted from textViewDidChangeSelection: so it can also
+// fire on scroll (see scrollViewDidScroll:) — JS-side overlays (image resize
+// handles, table controls, the selection popover) anchor to this rect in the
+// React wrapper's coordinate space, so they have to be refreshed as the text
+// view scrolls internally, or they stay pinned at the original spot and end up
+// floating over unrelated text.
+- (void)emitChangeSelectionEvent {
   // emit the event
   NSString *textAtSelection =
       [[[NSMutableString alloc] initWithString:textView.textStorage.string]
@@ -2368,7 +2724,36 @@ static UIColor *katavParseHexColor(NSString *hex) {
   // the popover out relative to the editor view. Empty / collapsed
   // selections report a zero-size rect and the JS side hides the popover.
   CGRect selectionRect = CGRectZero;
-  if (textView.selectedRange.length > 0) {
+  // Special case: a selected inline image is a single Object-Replacement-Char
+  // glyph whose laid-out glyph rect reserves image + caption height. Handing
+  // that full rect to JS makes the green resize/selection box taller than the
+  // image (starting above it) and corrupts the resize aspect (width/height).
+  // For an ImageAttachment, emit the image's own on-screen frame instead —
+  // computed by the SAME helper that positions the image, so the box hugs the
+  // image exactly and stays correct after internal scroll. Tables / horizontal
+  // rules are also single-ORC attachments but are NOT ImageAttachments and
+  // their caption-reserved height is 0, so we deliberately exclude them: JS
+  // (activeTableRect) needs the table's full glyph rect for its column handles.
+  BOOL handledImageRect = NO;
+  if (textView.selectedRange.length == 1) {
+    id attachment =
+        [textView.textStorage attribute:NSAttachmentAttributeName
+                                atIndex:textView.selectedRange.location
+                         effectiveRange:NULL];
+    if ([attachment isKindOfClass:[ImageAttachment class]]) {
+      CGRect imageRect = [AttachmentLayoutUtils
+          frameForAttachment:(ImageAttachment *)attachment
+                     atRange:textView.selectedRange
+                    textView:textView
+                      config:config];
+      if (!CGRectIsNull(imageRect) && !CGRectIsInfinite(imageRect) &&
+          imageRect.size.width > 0 && imageRect.size.height > 0) {
+        selectionRect = [textView convertRect:imageRect toView:self];
+        handledImageRect = YES;
+      }
+    }
+  }
+  if (!handledImageRect && textView.selectedRange.length > 0) {
     UITextRange *textRange =
         [self katavTextRangeFromNSRange:textView.selectedRange
                              inTextView:textView];
@@ -2404,8 +2789,83 @@ static UIColor *katavParseHexColor(NSString *hex) {
          .rectHeight = static_cast<Float>(selectionRect.size.height)});
   }
 
-  // manage selection changes
-  [self manageSelectionBasedChanges];
+  [self maybeEmitAiMarkTap];
+}
+
+// Fires onAiMarkTap once when the caret enters an AI suggestion/flag mark (the
+// caret moves into the mark on tap). Guarded by lastAiMarkId so it doesn't
+// re-fire on every selection change while the caret stays inside the same mark.
+- (void)maybeEmitAiMarkTap {
+  NSUInteger textLength = textView.textStorage.length;
+  NSString *currentAiId = nil;
+
+  if (textView.selectedRange.location < textLength) {
+    NSUInteger loc = textView.selectedRange.location;
+    NSRange whole = NSMakeRange(0, textLength);
+    NSRange markRange = NSMakeRange(NSNotFound, 0);
+    NSString *kind = nil;
+    AiMarkParams *params = nil;
+
+    AiMarkParams *sug = [textView.textStorage attribute:@"EnrichedAiSuggestion"
+                                                atIndex:loc
+                                  longestEffectiveRange:&markRange
+                                                inRange:whole];
+    if ([sug isKindOfClass:[AiMarkParams class]]) {
+      params = sug;
+      kind = @"suggestion";
+    } else {
+      AiMarkParams *flg = [textView.textStorage attribute:@"EnrichedAiFlag"
+                                                  atIndex:loc
+                                    longestEffectiveRange:&markRange
+                                                  inRange:whole];
+      if ([flg isKindOfClass:[AiMarkParams class]]) {
+        params = flg;
+        kind = @"flag";
+      }
+    }
+
+    if (params != nil) {
+      currentAiId = params.aiId ?: @"";
+      if (![currentAiId isEqualToString:lastAiMarkId]) {
+        CGRect markRect = CGRectZero;
+        UITextRange *tr = [self katavTextRangeFromNSRange:markRange
+                                               inTextView:textView];
+        if (tr != nil) {
+          CGRect raw = [textView firstRectForRange:tr];
+          if (!CGRectIsNull(raw) && !CGRectIsInfinite(raw)) {
+            markRect = [textView convertRect:raw toView:self];
+          }
+        }
+        auto emitter = [self getEventEmitter];
+        if (emitter != nullptr) {
+          emitter->onAiMarkTap(
+              {.kind = [kind toCppString],
+               .aiId = [(params.aiId ?: @"") toCppString],
+               .status = [(params.status ?: @"pending") toCppString],
+               .explanation = [(params.explanation ?: @"") toCppString],
+               .rectX = static_cast<Float>(markRect.origin.x),
+               .rectY = static_cast<Float>(markRect.origin.y),
+               .rectWidth = static_cast<Float>(markRect.size.width),
+               .rectHeight = static_cast<Float>(markRect.size.height)});
+        }
+      }
+    }
+  }
+
+  lastAiMarkId = currentAiId;
+}
+
+// UITextView is a UIScrollView and scrolls its content internally, but the
+// selection rect we report is anchored to the React wrapper — so a selected
+// image's resize handles (and the table/selection overlays) would stay frozen
+// in place while the image scrolls away, leaving the green chrome floating over
+// the text area. Re-emit the selection rect as the content scrolls so the
+// overlay tracks the selection. Only when something is actually selected, so
+// ordinary reading-scroll stays free of bridge traffic and re-renders.
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  if (textView.selectedRange.length > 0) {
+    [self emitChangeSelectionEvent];
+  }
 }
 
 // Builds a UITextRange from an NSRange so we can ask the text view for the
@@ -2518,8 +2978,78 @@ static UIColor *katavParseHexColor(NSString *hex) {
     break;
   }
 
+  case TextBlockTapKindTable: {
+    TableCellHitResult *hit = gr.tableHit;
+    if (hit == nil) {
+      break;
+    }
+    // Select the table's Object Replacement Character so the table reads as
+    // "active": JS keys the toolbar's table controls off this 1-char selection
+    // and clears them when the next selection change doesn't match.
+    NSUInteger loc = (NSUInteger)hit.charIndex;
+    if (loc < textView.textStorage.length) {
+      textView.selectedRange = NSMakeRange(loc, 1);
+    }
+    // Cell frame: text-view space → outer view (self) space, matching how
+    // onChangeSelection reports its rect, so the JS inline cell editor lands
+    // over the tapped cell after any scroll.
+    CGRect rectInSelf = [textView convertRect:hit.cellRect toView:self];
+    auto emitter = [self getEventEmitter];
+    if (emitter != nullptr) {
+      emitter->onTableCellTap(
+          {.charIndex = static_cast<int>(hit.charIndex),
+           .tableIndex = static_cast<int>(hit.tableIndex),
+           .row = static_cast<int>(hit.row),
+           .col = static_cast<int>(hit.col),
+           .x = static_cast<Float>(rectInSelf.origin.x),
+           .y = static_cast<Float>(rectInSelf.origin.y),
+           .width = static_cast<Float>(rectInSelf.size.width),
+           .height = static_cast<Float>(rectInSelf.size.height),
+           .colFractions = katavFractionsString(hit.columnFractions)});
+    }
+    break;
+  }
+
   default:
     break;
+  }
+}
+
+// Programmatically focus a table cell (no tap) and report it the same way
+// onTextBlockTap does — used by the JS Tab-to-next-cell navigation. Reads the
+// live cell geometry so it's correct after re-renders.
+- (void)focusTableCellAtIndex:(NSInteger)tableIndex
+                          row:(NSInteger)row
+                          col:(NSInteger)col {
+  TableCellHitResult *hit = [TableCellHitTestUtils cellAtTableIndex:tableIndex
+                                                                row:row
+                                                                col:col
+                                                            inInput:self];
+  if (hit == nil) {
+    return;
+  }
+  // NOTE: deliberately does NOT call becomeFirstResponder. This is driven by
+  // Tab from the JS inline cell editor (a separate RN TextInput overlay that
+  // holds the keyboard); grabbing first responder for the native editor here
+  // steals focus mid-handoff and drops the keyboard on the next cell. Setting
+  // selectedRange doesn't require first responder.
+  NSUInteger loc = (NSUInteger)hit.charIndex;
+  if (loc < textView.textStorage.length) {
+    textView.selectedRange = NSMakeRange(loc, 1);
+  }
+  CGRect rectInSelf = [textView convertRect:hit.cellRect toView:self];
+  auto emitter = [self getEventEmitter];
+  if (emitter != nullptr) {
+    emitter->onTableCellTap(
+        {.charIndex = static_cast<int>(hit.charIndex),
+         .tableIndex = static_cast<int>(tableIndex),
+         .row = static_cast<int>(row),
+         .col = static_cast<int>(col),
+         .x = static_cast<Float>(rectInSelf.origin.x),
+         .y = static_cast<Float>(rectInSelf.origin.y),
+         .width = static_cast<Float>(rectInSelf.size.width),
+         .height = static_cast<Float>(rectInSelf.size.height),
+         .colFractions = katavFractionsString(hit.columnFractions)});
   }
 }
 

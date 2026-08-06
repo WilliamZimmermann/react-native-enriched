@@ -20,6 +20,7 @@ typedef NS_ENUM(NSInteger, StyleType) {
   Mention,
   Image,
   Table,
+  HorizontalRule,
   InlineCode,
   Bold,
   Italic,
@@ -27,5 +28,7 @@ typedef NS_ENUM(NSInteger, StyleType) {
   Strikethrough,
   Highlight,
   FontSize,
+  AiSuggestion,
+  AiFlag,
   None,
 };

@@ -1,5 +1,7 @@
 package com.swmansion.enriched.common.parser
 
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan
 import com.swmansion.enriched.common.spans.EnrichedAlignmentSpan
 import com.swmansion.enriched.common.spans.EnrichedBlockQuoteSpan
 import com.swmansion.enriched.common.spans.EnrichedBoldSpan
@@ -12,6 +14,7 @@ import com.swmansion.enriched.common.spans.EnrichedH3Span
 import com.swmansion.enriched.common.spans.EnrichedH4Span
 import com.swmansion.enriched.common.spans.EnrichedH5Span
 import com.swmansion.enriched.common.spans.EnrichedH6Span
+import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan
 import com.swmansion.enriched.common.spans.EnrichedImageSpan
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan
@@ -51,6 +54,20 @@ interface EnrichedSpanFactory<T> {
     style: T,
   ): EnrichedMentionSpan
 
+  fun createAiSuggestionSpan(
+    aiId: String,
+    status: String,
+    model: String,
+    style: T,
+  ): EnrichedAiSuggestionSpan
+
+  fun createAiFlagSpan(
+    aiId: String,
+    status: String,
+    explanation: String,
+    style: T,
+  ): EnrichedAiFlagSpan
+
   fun createImageSpan(
     source: String,
     width: Int,
@@ -63,6 +80,7 @@ interface EnrichedSpanFactory<T> {
     data: EnrichedTableData,
     style: T,
   ): EnrichedTableSpan
+  fun createHorizontalRuleSpan(): EnrichedHorizontalRuleSpan
 
   fun createH1Span(style: T): EnrichedH1Span
 

@@ -35,6 +35,7 @@ export const DEFAULT_STYLES: StylesState = {
   highlight: DEFAULT_STYLE_STATE,
   alignment: 'auto',
   direction: 'auto',
+  selectedImageCaption: '',
 };
 
 export const DEFAULT_LINK_STATE = {

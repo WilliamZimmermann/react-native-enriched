@@ -24,6 +24,15 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
 
 @implementation ImageAttachment
 
++ (void)seedCacheWithImage:(UIImage *)image forURI:(NSString *)uri {
+  if (image != nil && uri.length > 0) {
+    CGFloat scale = image.scale;
+    NSUInteger cost = (NSUInteger)(image.size.width * scale *
+                                   image.size.height * scale * 4.0);
+    [ImageAttachmentCache() setObject:image forKey:uri cost:cost];
+  }
+}
+
 - (instancetype)initWithImageData:(ImageData *)data {
   self = [super initWithURI:data.uri width:data.width height:data.height];
   if (!self)
@@ -57,6 +66,7 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
           CGRectMake(0, 0, cachedImage.size.width, cachedImage.size.height);
     }
     self.storedAnimatedImage = cachedImage;
+    self.didLoad = YES; // cache only ever holds successfully-decoded images
     dispatch_async(dispatch_get_main_queue(), ^{
       [self notifyUpdate];
     });
@@ -64,6 +74,46 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
     [self loadAsync];
   }
   return self;
+}
+
++ (UIFont *)captionFont {
+  return [UIFont systemFontOfSize:13];
+}
+
+// Caption is rendered below the image (best-effort; needs on-device tuning).
+static const CGFloat kCaptionGap = 4.0;
+
++ (CGFloat)captionHeightForCaption:(NSString *)caption width:(CGFloat)width {
+  if (caption == nil || caption.length == 0 || width <= 0) {
+    return 0;
+  }
+  // Measure the wrapped text height so long captions span multiple lines
+  // instead of being clipped to one.
+  CGRect rect =
+      [caption boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                            options:NSStringDrawingUsesLineFragmentOrigin |
+                                    NSStringDrawingUsesFontLeading
+                         attributes:@{
+                           NSFontAttributeName : [ImageAttachment captionFont]
+                         }
+                            context:nil];
+  return ceil(rect.size.height);
+}
+
+- (CGFloat)captionReservedHeight {
+  NSString *caption = self.imageData.caption;
+  if (caption == nil || caption.length == 0) {
+    return 0;
+  }
+  CGFloat textHeight =
+      [ImageAttachment captionHeightForCaption:caption
+                                         width:self.bounds.size.width];
+  if (textHeight <= 0) {
+    // No usable width yet (pre-layout) — reserve a single line so the row
+    // doesn't collapse; the next layout pass reserves the true wrapped height.
+    textHeight = ceil([ImageAttachment captionFont].lineHeight);
+  }
+  return kCaptionGap + textHeight;
 }
 
 - (CGRect)attachmentBoundsForTextContainer:(NSTextContainer *)textContainer
@@ -108,8 +158,12 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
   // the line height to jump.  By reserving descender space upfront the line
   // height stays consistent regardless of whether text is present.
   CGFloat descender = font.descender;
-  return CGRectMake(baseBounds.origin.x, descender, baseBounds.size.width,
-                    baseBounds.size.height - descender);
+  // Reserve extra space below the image for the caption (drawn by the overlay
+  // layout as a label below the UIImageView).
+  CGFloat caption = [self captionReservedHeight];
+  return CGRectMake(baseBounds.origin.x, descender - caption,
+                    baseBounds.size.width,
+                    baseBounds.size.height - descender + caption);
 }
 
 - (void)loadAsync {
@@ -149,6 +203,10 @@ static NSCache<NSString *, UIImage *> *ImageAttachmentCache(void) {
         self.height = img.size.height;
         self.bounds = CGRectMake(0, 0, img.size.width, img.size.height);
       }
+      // A real image only when bytes actually loaded — on failure `img` is the
+      // SF-Symbol placeholder, which must NOT be treated as loaded (or seeded
+      // into the cache by callers).
+      self.didLoad = (bytes != nil && img != nil);
       self.storedAnimatedImage = img;
       [self notifyUpdate];
     });

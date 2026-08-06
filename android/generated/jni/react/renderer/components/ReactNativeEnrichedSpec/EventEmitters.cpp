@@ -194,6 +194,7 @@ void EnrichedTextInputViewEventEmitter::onChangeState(OnChangeState event) const
 }
 payload.setProperty(runtime, "alignment", event.alignment);
 payload.setProperty(runtime, "direction", event.direction);
+payload.setProperty(runtime, "selectedImageCaption", event.selectedImageCaption);
     return payload;
   });
 }
@@ -259,6 +260,22 @@ payload.setProperty(runtime, "y", event.y);
 payload.setProperty(runtime, "width", event.width);
 payload.setProperty(runtime, "height", event.height);
 payload.setProperty(runtime, "colFractions", event.colFractions);
+    return payload;
+  });
+}
+
+
+void EnrichedTextInputViewEventEmitter::onAiMarkTap(OnAiMarkTap event) const {
+  dispatchEvent("aiMarkTap", [event=std::move(event)](jsi::Runtime &runtime) {
+    auto payload = jsi::Object(runtime);
+    payload.setProperty(runtime, "kind", event.kind);
+payload.setProperty(runtime, "aiId", event.aiId);
+payload.setProperty(runtime, "status", event.status);
+payload.setProperty(runtime, "explanation", event.explanation);
+payload.setProperty(runtime, "rectX", event.rectX);
+payload.setProperty(runtime, "rectY", event.rectY);
+payload.setProperty(runtime, "rectWidth", event.rectWidth);
+payload.setProperty(runtime, "rectHeight", event.rectHeight);
     return payload;
   });
 }
@@ -455,6 +472,7 @@ payload.setProperty(runtime, "selectionEnd", event.selectionEnd);
   }
   styleState.setProperty(runtime, "alignment", event.styleState.alignment);
   styleState.setProperty(runtime, "direction", event.styleState.direction);
+  styleState.setProperty(runtime, "selectedImageCaption", event.styleState.selectedImageCaption);
   payload.setProperty(runtime, "styleState", styleState);
 }
     return payload;

@@ -49,6 +49,8 @@ object EnrichedSpans {
   const val LINK = "link"
   const val IMAGE = "image"
   const val MENTION = "mention"
+  const val AI_SUGGESTION = "ai_suggestion"
+  const val AI_FLAG = "ai_flag"
 
   val inlineSpans: Map<String, BaseSpanConfig> =
     mapOf(
@@ -83,6 +85,8 @@ object EnrichedSpans {
       LINK to BaseSpanConfig(EnrichedInputLinkSpan::class.java),
       IMAGE to BaseSpanConfig(EnrichedInputImageSpan::class.java),
       MENTION to BaseSpanConfig(EnrichedInputMentionSpan::class.java),
+      AI_SUGGESTION to BaseSpanConfig(EnrichedInputAiSuggestionSpan::class.java),
+      AI_FLAG to BaseSpanConfig(EnrichedInputAiFlagSpan::class.java),
     )
 
   val allSpans: Map<String, ISpanConfig> = inlineSpans + paragraphSpans + listSpans + parametrizedStyles
@@ -229,6 +233,11 @@ object EnrichedSpans {
         StylesMergingConfig(
           blockingStyles = arrayOf(INLINE_CODE, CODE_BLOCK, LINK),
         )
+      }
+      AI_SUGGESTION, AI_FLAG -> {
+        // AI marks are overlays applied programmatically — they coexist with any
+        // inline/block formatting and conflict with nothing.
+        StylesMergingConfig()
       }
 
       else -> {

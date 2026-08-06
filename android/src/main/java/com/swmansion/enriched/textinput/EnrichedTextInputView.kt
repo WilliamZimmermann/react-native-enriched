@@ -147,6 +147,9 @@ class EnrichedTextInputView :
   // land on a table cell) from a scroll or a drag-select.
   private var touchDownX = 0f
   private var touchDownY = 0f
+  // Configured native selection highlight color, restored after an image
+  // selection temporarily clears it (see onSelectionChanged).
+  private var baseHighlightColor: Int = highlightColor
   private var fontFamily: String? = null
   private var fontStyle: Int = ReactConstants.UNSET
   private var fontWeight: Int = ReactConstants.UNSET
@@ -421,6 +424,14 @@ class EnrichedTextInputView :
   ) {
     super.onSelectionChanged(selStart, selEnd)
     selection?.onSelection(selStart, selEnd)
+    // A lone selected inline image shows the JS resize overlay instead. Its
+    // span reserves a box taller than the image (image + caption space), so the
+    // native selection highlight would render a second, larger box around it —
+    // hide it while an image is selected, restore the configured color otherwise.
+    val imageSelected =
+      selEnd - selStart == 1 &&
+        (text?.getSpans(selStart, selEnd, EnrichedInputImageSpan::class.java)?.isNotEmpty() == true)
+    highlightColor = if (imageSelected) Color.TRANSPARENT else baseHighlightColor
   }
 
   override fun clearFocus() {
@@ -638,6 +649,9 @@ class EnrichedTextInputView :
   fun setSelectionColor(colorInt: Int?) {
     if (colorInt == null) return
 
+    // Remember the configured color so onSelectionChanged can restore it after
+    // an image selection cleared the highlight.
+    baseHighlightColor = colorInt
     highlightColor = colorInt
   }
 
@@ -1170,6 +1184,28 @@ class EnrichedTextInputView :
     layoutManager.invalidateLayout()
   }
 
+  /** Inserts a horizontal rule (`<hr>`) at the caret, forced onto its own line. */
+  fun insertHorizontalRule() {
+    parametrizedStyles?.insertHorizontalRule()
+    layoutManager.invalidateLayout()
+  }
+
+  /** Sets (or clears, when blank) the caption of the currently-selected image,
+   *  then refreshes layout and re-emits the HTML so it autosaves. */
+  fun setSelectedImageCaption(caption: String) {
+    val spannable = text as? Spannable ?: return
+    val start = spanState?.getStart(EnrichedSpans.IMAGE) ?: return
+    val span =
+      spannable
+        .getSpans(start, start + 1, EnrichedInputImageSpan::class.java)
+        .firstOrNull() ?: return
+    span.caption = caption.ifBlank { null }
+    layoutManager.invalidateLayout()
+    // A span-attribute mutation doesn't trip the text/span watchers, so emit the
+    // HTML change explicitly (drives autosave + the data-caption round-trip).
+    spanWatcher?.emitEvent(spannable, span)
+  }
+
   fun startMention(indicator: String) {
     val isValid = verifyStyle(EnrichedSpans.MENTION)
     if (!isValid) return
@@ -1186,6 +1222,68 @@ class EnrichedTextInputView :
     if (!isValid) return
 
     parametrizedStyles?.setMentionSpan(text, indicator, attributes)
+  }
+
+  // AI track-changes marks. Applied over an explicit range (no verifyStyle —
+  // they're programmatic overlays that conflict with nothing); review actions
+  // are keyed by aiId.
+  fun applyAiSuggestion(
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    model: String,
+  ) {
+    parametrizedStyles?.setAiSuggestionSpan(
+      getActualIndex(start),
+      getActualIndex(end),
+      aiId,
+      status,
+      model,
+    )
+  }
+
+  fun applyAiFlag(
+    start: Int,
+    end: Int,
+    aiId: String,
+    status: String,
+    explanation: String,
+  ) {
+    parametrizedStyles?.setAiFlagSpan(
+      getActualIndex(start),
+      getActualIndex(end),
+      aiId,
+      status,
+      explanation,
+    )
+  }
+
+  fun acceptAiMark(aiId: String) {
+    parametrizedStyles?.acceptAiMark(aiId)
+  }
+
+  fun rejectAiMark(
+    aiId: String,
+    deleteText: Boolean,
+  ) {
+    parametrizedStyles?.rejectAiMark(aiId, deleteText)
+  }
+
+  fun claimAiMark(aiId: String) {
+    parametrizedStyles?.claimAiMark(aiId)
+  }
+
+  fun acceptAllAiSuggestions() {
+    parametrizedStyles?.acceptAllAiSuggestions()
+  }
+
+  fun rejectAllAiSuggestions() {
+    parametrizedStyles?.rejectAllAiSuggestions()
+  }
+
+  fun rejectAllAiFlags() {
+    parametrizedStyles?.rejectAllAiFlags()
   }
 
   fun setTextAlignment(alignment: String) {

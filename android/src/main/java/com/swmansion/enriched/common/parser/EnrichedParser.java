@@ -21,9 +21,12 @@ import com.swmansion.enriched.common.spans.EnrichedH4Span;
 import com.swmansion.enriched.common.spans.EnrichedH5Span;
 import com.swmansion.enriched.common.spans.EnrichedH6Span;
 import com.swmansion.enriched.common.spans.EnrichedHighlightSpan;
+import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan;
 import com.swmansion.enriched.common.spans.EnrichedImageSpan;
 import com.swmansion.enriched.common.spans.EnrichedInlineCodeSpan;
 import com.swmansion.enriched.common.spans.EnrichedItalicSpan;
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan;
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan;
 import com.swmansion.enriched.common.spans.EnrichedLinkSpan;
 import com.swmansion.enriched.common.spans.EnrichedMentionSpan;
 import com.swmansion.enriched.common.spans.EnrichedOrderedListSpan;
@@ -222,6 +225,26 @@ public class EnrichedParser {
         }
         out.append("<br>\n");
       } else {
+        // A horizontal rule lives alone on its line; emit it as a top-level
+        // <hr> (not wrapped in <p>) so the web editor reads it as a block.
+        EnrichedHorizontalRuleSpan[] hrSpans =
+            text.getSpans(i, next, EnrichedHorizontalRuleSpan.class);
+        if (hrSpans.length > 0) {
+          if (isInUlList) {
+            isInUlList = false;
+            out.append("</ul>\n");
+          } else if (isInOlList) {
+            isInOlList = false;
+            out.append("</ol>\n");
+          } else if (isInCheckboxList) {
+            isInCheckboxList = false;
+            out.append("</ul>\n");
+          }
+          out.append("<hr>\n");
+          next++;
+          continue;
+        }
+
         EnrichedParagraphSpan[] paragraphStyles =
             text.getSpans(i, next, EnrichedParagraphSpan.class);
         String tag = getBlockTag(paragraphStyles);
@@ -382,6 +405,26 @@ public class EnrichedParser {
           out.append(((EnrichedTableSpan) style[j]).getData().getRawHtml());
           i = next;
         }
+        if (style[j] instanceof EnrichedAiSuggestionSpan) {
+          EnrichedAiSuggestionSpan ai = (EnrichedAiSuggestionSpan) style[j];
+          out.append("<span data-ai-suggestion=\"");
+          out.append(escapeHtml(ai.getStatus()));
+          out.append("\" data-ai-id=\"");
+          out.append(escapeHtml(ai.getAiId()));
+          out.append("\" data-ai-model=\"");
+          out.append(escapeHtml(ai.getModel()));
+          out.append("\">");
+        }
+        if (style[j] instanceof EnrichedAiFlagSpan) {
+          EnrichedAiFlagSpan ai = (EnrichedAiFlagSpan) style[j];
+          out.append("<span data-ai-flag=\"");
+          out.append(escapeHtml(ai.getStatus()));
+          out.append("\" data-ai-id=\"");
+          out.append(escapeHtml(ai.getAiId()));
+          out.append("\" data-ai-explanation=\"");
+          out.append(escapeHtml(ai.getExplanation()));
+          out.append("\">");
+        }
         if (style[j] instanceof EnrichedImageSpan) {
           out.append("<img src=\"");
           out.append(((EnrichedImageSpan) style[j]).getSource());
@@ -393,8 +436,17 @@ public class EnrichedParser {
 
           out.append(" height=\"");
           out.append(((EnrichedImageSpan) style[j]).getHeight());
+          out.append("\"");
 
-          out.append("\"/>");
+          // Caption round-trips as data-caption (1:1 with the web editor).
+          String caption = ((EnrichedImageSpan) style[j]).getCaption();
+          if (caption != null && !caption.isEmpty()) {
+            out.append(" data-caption=\"");
+            out.append(escapeHtml(caption));
+            out.append("\"");
+          }
+
+          out.append("/>");
           // Don't output the placeholder character underlying the image.
           i = next;
         }
@@ -406,6 +458,10 @@ public class EnrichedParser {
         }
         if (style[j] instanceof EnrichedMentionSpan) {
           out.append("</mention>");
+        }
+        if (style[j] instanceof EnrichedAiSuggestionSpan
+            || style[j] instanceof EnrichedAiFlagSpan) {
+          out.append("</span>");
         }
         if (style[j] instanceof EnrichedStrikeThroughSpan) {
           out.append("</s>");
@@ -740,10 +796,17 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       // Image content means the current tag is not empty (e.g. <li><img .../></li>).
       isEmptyTag = false;
       startImg(mSpannableStringBuilder, attributes, mSpanFactory);
+    } else if (tag.equalsIgnoreCase("hr")) {
+      // Void block element — rendered as a single object-replacement char on its
+      // own line.
+      isEmptyTag = false;
+      startHr(mSpannableStringBuilder, mSpanFactory);
     } else if (tag.equalsIgnoreCase("code")) {
       start(mSpannableStringBuilder, new Code());
     } else if (tag.equalsIgnoreCase("mention")) {
       startMention(mSpannableStringBuilder, attributes);
+    } else if (tag.equalsIgnoreCase("span")) {
+      startSpan(mSpannableStringBuilder, attributes);
     }
   }
 
@@ -805,6 +868,8 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
       end(mSpannableStringBuilder, Code.class, mSpanFactory.createInlineCodeSpan(mStyle));
     } else if (tag.equalsIgnoreCase("mention")) {
       endMention(mSpannableStringBuilder, mStyle, mSpanFactory);
+    } else if (tag.equalsIgnoreCase("span")) {
+      endSpan(mSpannableStringBuilder, mStyle, mSpanFactory);
     }
   }
 
@@ -1141,6 +1206,32 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
         len,
         text.length(),
         Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    String width = attributes.getValue("", "width");
+    String height = attributes.getValue("", "height");
+    String caption = attributes.getValue("", "data-caption");
+
+    int len = text.length();
+    text.append("￼");
+    // createImageSpan returns the concrete EnrichedImageSpan (like
+    // createHorizontalRuleSpan), not the generic T.
+    EnrichedImageSpan imageSpan =
+        spanFactory.createImageSpan(src, Integer.parseInt(width), Integer.parseInt(height));
+    if (caption != null && !caption.isEmpty()) {
+      imageSpan.setCaption(caption);
+    }
+    text.setSpan(imageSpan, len, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+  }
+
+  private static <T> void startHr(Editable text, EnrichedSpanFactory<T> spanFactory) {
+    // Force the rule onto its own line: a newline boundary before it, the
+    // object-replacement char carrying the span, then a trailing newline so the
+    // following block starts fresh. appendNewlines collapses redundant breaks.
+    startBlockElement(text);
+    int len = text.length();
+    text.append(EnrichedConstants.ORC_STRING);
+    EnrichedHorizontalRuleSpan hrSpan = spanFactory.createHorizontalRuleSpan();
+    text.setSpan(hrSpan, len, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    text.append('\n');
   }
 
   /**
@@ -1203,6 +1294,37 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
 
     setSpanFromMark(
         text, m, spanFactory.createMentionSpan(m.mText, m.mIndicator, m.mAttributes, style));
+  }
+
+  // AI track-changes marks: <span data-ai-suggestion|flag ...>. A plain <span>
+  // with no data-ai-* attributes pushes no marker, so endSpan no-ops for it.
+  private static void startSpan(Editable text, Attributes attributes) {
+    String suggestion = attributes.getValue("", "data-ai-suggestion");
+    String flag = attributes.getValue("", "data-ai-flag");
+    String aiId = attributes.getValue("", "data-ai-id");
+    if (suggestion != null) {
+      String model = attributes.getValue("", "data-ai-model");
+      start(text, new AiSuggestion(aiId == null ? "" : aiId, suggestion, model == null ? "" : model));
+    } else if (flag != null) {
+      String explanation = attributes.getValue("", "data-ai-explanation");
+      start(
+          text,
+          new AiFlag(aiId == null ? "" : aiId, flag, explanation == null ? "" : explanation));
+    }
+  }
+
+  private static <T> void endSpan(Editable text, T style, EnrichedSpanFactory<T> spanFactory) {
+    AiSuggestion s = getLast(text, AiSuggestion.class);
+    if (s != null) {
+      setSpanFromMark(
+          text, s, spanFactory.createAiSuggestionSpan(s.mAiId, s.mStatus, s.mModel, style));
+      return;
+    }
+    AiFlag f = getLast(text, AiFlag.class);
+    if (f != null) {
+      setSpanFromMark(
+          text, f, spanFactory.createAiFlagSpan(f.mAiId, f.mStatus, f.mExplanation, style));
+    }
   }
 
   public void setDocumentLocator(Locator locator) {}
@@ -1389,6 +1511,30 @@ class HtmlToSpannedConverter<T> implements ContentHandler {
 
     public Href(String href) {
       mHref = href;
+    }
+  }
+
+  private static class AiSuggestion {
+    public String mAiId;
+    public String mStatus;
+    public String mModel;
+
+    public AiSuggestion(String aiId, String status, String model) {
+      mAiId = aiId;
+      mStatus = status;
+      mModel = model;
+    }
+  }
+
+  private static class AiFlag {
+    public String mAiId;
+    public String mStatus;
+    public String mExplanation;
+
+    public AiFlag(String aiId, String status, String explanation) {
+      mAiId = aiId;
+      mStatus = status;
+      mExplanation = explanation;
     }
   }
 

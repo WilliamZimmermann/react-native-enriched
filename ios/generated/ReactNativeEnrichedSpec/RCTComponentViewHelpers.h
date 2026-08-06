@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setValue:(NSString *)text;
 - (void)insertText:(NSString *)text;
 - (void)setSelection:(NSInteger)start end:(NSInteger)end;
+- (void)focusTableCell:(NSInteger)tableIndex row:(NSInteger)row col:(NSInteger)col;
 - (void)toggleBold;
 - (void)toggleItalic;
 - (void)toggleUnderline;
@@ -42,6 +43,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addLink:(NSInteger)start end:(NSInteger)end text:(NSString *)text url:(NSString *)url;
 - (void)removeLink:(NSInteger)start end:(NSInteger)end;
 - (void)addImage:(NSString *)uri width:(float)width height:(float)height;
+- (void)setSelectedImageCaption:(NSString *)caption;
+- (void)insertHorizontalRule;
 - (void)startMention:(NSString *)indicator;
 - (void)addMention:(NSString *)indicator text:(NSString *)text payload:(NSString *)payload;
 - (void)requestHTML:(NSInteger)requestId;
@@ -58,6 +61,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)toggleScript:(NSInteger)start end:(NSInteger)end superscript:(BOOL)superscript;
 - (void)clearFormatting:(NSInteger)start end:(NSInteger)end;
 - (void)clearColors:(NSInteger)start end:(NSInteger)end;
+- (void)applyAiSuggestion:(NSInteger)start end:(NSInteger)end aiId:(NSString *)aiId status:(NSString *)status model:(NSString *)model;
+- (void)applyAiFlag:(NSInteger)start end:(NSInteger)end aiId:(NSString *)aiId status:(NSString *)status explanation:(NSString *)explanation;
+- (void)acceptAiMark:(NSString *)aiId;
+- (void)rejectAiMark:(NSString *)aiId deleteText:(BOOL)deleteText;
+- (void)claimAiMark:(NSString *)aiId;
+- (void)acceptAllAiSuggestions;
+- (void)rejectAllAiSuggestions;
+- (void)rejectAllAiFlags;
 @end
 
 RCT_EXTERN inline void RCTEnrichedTextInputViewHandleCommand(
@@ -186,6 +197,42 @@ NSObject *arg1 = args[1];
   NSInteger end = [(NSNumber *)arg1 intValue];
 
   [componentView setSelection:start end:end];
+  return;
+}
+
+if ([commandName isEqualToString:@"focusTableCell"]) {
+#if RCT_DEBUG
+  if ([args count] != 3) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 3);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger tableIndex = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger row = [(NSNumber *)arg1 intValue];
+
+NSObject *arg2 = args[2];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg2, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"3rd")) {
+    return;
+  }
+#endif
+  NSInteger col = [(NSNumber *)arg2 intValue];
+
+  [componentView focusTableCell:tableIndex row:row col:col];
   return;
 }
 
@@ -552,6 +599,40 @@ NSObject *arg2 = args[2];
   float height = [(NSNumber *)arg2 floatValue];
 
   [componentView addImage:uri width:width height:height];
+  return;
+}
+
+if ([commandName isEqualToString:@"setSelectedImageCaption"]) {
+#if RCT_DEBUG
+  if ([args count] != 1) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 1);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSString * caption = (NSString *)arg0;
+
+  [componentView setSelectedImageCaption:caption];
+  return;
+}
+
+if ([commandName isEqualToString:@"insertHorizontalRule"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView insertHorizontalRule];
   return;
 }
 
@@ -1024,6 +1105,220 @@ NSObject *arg1 = args[1];
   NSInteger end = [(NSNumber *)arg1 intValue];
 
   [componentView clearColors:start end:end];
+  return;
+}
+
+if ([commandName isEqualToString:@"applyAiSuggestion"]) {
+#if RCT_DEBUG
+  if ([args count] != 5) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 5);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger start = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger end = [(NSNumber *)arg1 intValue];
+
+NSObject *arg2 = args[2];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg2, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"3rd")) {
+    return;
+  }
+#endif
+  NSString * aiId = (NSString *)arg2;
+
+NSObject *arg3 = args[3];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg3, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"4th")) {
+    return;
+  }
+#endif
+  NSString * status = (NSString *)arg3;
+
+NSObject *arg4 = args[4];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg4, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"5th")) {
+    return;
+  }
+#endif
+  NSString * model = (NSString *)arg4;
+
+  [componentView applyAiSuggestion:start end:end aiId:aiId status:status model:model];
+  return;
+}
+
+if ([commandName isEqualToString:@"applyAiFlag"]) {
+#if RCT_DEBUG
+  if ([args count] != 5) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 5);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSInteger start = [(NSNumber *)arg0 intValue];
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"number", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  NSInteger end = [(NSNumber *)arg1 intValue];
+
+NSObject *arg2 = args[2];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg2, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"3rd")) {
+    return;
+  }
+#endif
+  NSString * aiId = (NSString *)arg2;
+
+NSObject *arg3 = args[3];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg3, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"4th")) {
+    return;
+  }
+#endif
+  NSString * status = (NSString *)arg3;
+
+NSObject *arg4 = args[4];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg4, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"5th")) {
+    return;
+  }
+#endif
+  NSString * explanation = (NSString *)arg4;
+
+  [componentView applyAiFlag:start end:end aiId:aiId status:status explanation:explanation];
+  return;
+}
+
+if ([commandName isEqualToString:@"acceptAiMark"]) {
+#if RCT_DEBUG
+  if ([args count] != 1) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 1);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSString * aiId = (NSString *)arg0;
+
+  [componentView acceptAiMark:aiId];
+  return;
+}
+
+if ([commandName isEqualToString:@"rejectAiMark"]) {
+#if RCT_DEBUG
+  if ([args count] != 2) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 2);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSString * aiId = (NSString *)arg0;
+
+NSObject *arg1 = args[1];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg1, [NSNumber class], @"boolean", @"EnrichedTextInputView", commandName, @"2nd")) {
+    return;
+  }
+#endif
+  BOOL deleteText = [(NSNumber *)arg1 boolValue];
+
+  [componentView rejectAiMark:aiId deleteText:deleteText];
+  return;
+}
+
+if ([commandName isEqualToString:@"claimAiMark"]) {
+#if RCT_DEBUG
+  if ([args count] != 1) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 1);
+    return;
+  }
+#endif
+
+  NSObject *arg0 = args[0];
+#if RCT_DEBUG
+  if (!RCTValidateTypeOfViewCommandArgument(arg0, [NSString class], @"string", @"EnrichedTextInputView", commandName, @"1st")) {
+    return;
+  }
+#endif
+  NSString * aiId = (NSString *)arg0;
+
+  [componentView claimAiMark:aiId];
+  return;
+}
+
+if ([commandName isEqualToString:@"acceptAllAiSuggestions"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView acceptAllAiSuggestions];
+  return;
+}
+
+if ([commandName isEqualToString:@"rejectAllAiSuggestions"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView rejectAllAiSuggestions];
+  return;
+}
+
+if ([commandName isEqualToString:@"rejectAllAiFlags"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView rejectAllAiFlags];
   return;
 }
 

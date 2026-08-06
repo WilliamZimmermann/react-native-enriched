@@ -5,6 +5,8 @@ import com.swmansion.enriched.common.parser.EnrichedSpanFactory
 import com.swmansion.enriched.common.spans.EnrichedTableData
 import com.swmansion.enriched.common.spans.EnrichedTableSpan
 import com.swmansion.enriched.common.spans.tableWidth
+import com.swmansion.enriched.common.spans.EnrichedAiFlagSpan
+import com.swmansion.enriched.common.spans.EnrichedAiSuggestionSpan
 import com.swmansion.enriched.text.spans.EnrichedTextAlignmentSpan
 import com.swmansion.enriched.text.spans.EnrichedTextBlockQuoteSpan
 import com.swmansion.enriched.text.spans.EnrichedTextBoldSpan
@@ -17,6 +19,7 @@ import com.swmansion.enriched.text.spans.EnrichedTextH3Span
 import com.swmansion.enriched.text.spans.EnrichedTextH4Span
 import com.swmansion.enriched.text.spans.EnrichedTextH5Span
 import com.swmansion.enriched.text.spans.EnrichedTextH6Span
+import com.swmansion.enriched.common.spans.EnrichedHorizontalRuleSpan
 import com.swmansion.enriched.text.spans.EnrichedTextImageSpan
 import com.swmansion.enriched.text.spans.EnrichedTextInlineCodeSpan
 import com.swmansion.enriched.text.spans.EnrichedTextItalicSpan
@@ -54,6 +57,22 @@ class EnrichedTextSpanFactory : EnrichedSpanFactory<EnrichedTextStyle> {
     style: EnrichedTextStyle,
   ) = EnrichedTextMentionSpan(text, indicator, attributes, style)
 
+  // The read-only viewer renders AI marks with the shared base spans (they're
+  // not interactive there).
+  override fun createAiSuggestionSpan(
+    aiId: String,
+    status: String,
+    model: String,
+    style: EnrichedTextStyle,
+  ) = EnrichedAiSuggestionSpan(aiId, status, model)
+
+  override fun createAiFlagSpan(
+    aiId: String,
+    status: String,
+    explanation: String,
+    style: EnrichedTextStyle,
+  ) = EnrichedAiFlagSpan(aiId, status, explanation)
+
   override fun createImageSpan(
     source: String,
     width: Int,
@@ -65,6 +84,7 @@ class EnrichedTextSpanFactory : EnrichedSpanFactory<EnrichedTextStyle> {
     data: EnrichedTableData,
     style: EnrichedTextStyle,
   ) = EnrichedTableSpan(data, tableWidth(), style.tableHeaderBackgroundColor)
+  override fun createHorizontalRuleSpan() = EnrichedHorizontalRuleSpan()
 
   override fun createH1Span(style: EnrichedTextStyle) = EnrichedTextH1Span(style)
 

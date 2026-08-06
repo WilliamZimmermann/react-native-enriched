@@ -132,6 +132,9 @@ export interface OnChangeStateEvent {
   // Active paragraph writing direction: 'ltr' | 'rtl' | 'auto'. 'auto' means the
   // paragraph follows first-strong bidi detection (no explicit dir attribute).
   direction: string;
+  // Caption of the currently-selected image (empty string when none / no
+  // image selected). Lets the toolbar pre-fill its caption dialog.
+  selectedImageCaption: string;
 }
 
 export interface OnLinkDetected {
@@ -189,6 +192,21 @@ export interface OnTableCellTapEvent {
   // The table's rendered column widths as comma-separated fractions (sum ≈ 1),
   // e.g. "0.3,0.4,0.3" — JS uses them to place per-column resize handles.
   colFractions: string;
+}
+
+// Fired when the user taps inside an AI suggestion/flag span. `kind` is
+// 'suggestion' | 'flag'; the rect is the mark's on-screen bounding box in the
+// editor view's coordinate space (points) so JS can anchor the accept/reject
+// popover over it.
+export interface OnAiMarkTapEvent {
+  kind: string;
+  aiId: string;
+  status: string;
+  explanation: string;
+  rectX: Float;
+  rectY: Float;
+  rectWidth: Float;
+  rectHeight: Float;
 }
 
 export interface OnRequestHtmlResultEvent {
@@ -321,6 +339,7 @@ export interface OnContextMenuItemPressEvent {
     };
     alignment: string;
     direction: string;
+    selectedImageCaption: string;
   };
 }
 
@@ -438,6 +457,7 @@ export interface NativeProps extends ViewProps {
   onMention?: DirectEventHandler<OnMentionEvent>;
   onChangeSelection?: DirectEventHandler<OnChangeSelectionEvent>;
   onTableCellTap?: DirectEventHandler<OnTableCellTapEvent>;
+  onAiMarkTap?: DirectEventHandler<OnAiMarkTapEvent>;
   onRequestHtmlResult?: DirectEventHandler<OnRequestHtmlResultEvent>;
   onInputKeyPress?: DirectEventHandler<OnKeyPressEvent>;
   onPasteImages?: DirectEventHandler<OnPasteImagesEvent>;
@@ -480,6 +500,14 @@ interface NativeCommands {
     start: Int32,
     end: Int32
   ) => void;
+  // Programmatically focus a table cell (by table ordinal + row/col); the
+  // native side emits onTableCellTap for it. Used for Tab navigation.
+  focusTableCell: (
+    viewRef: React.ElementRef<ComponentType>,
+    tableIndex: Int32,
+    row: Int32,
+    col: Int32
+  ) => void;
 
   // Text formatting commands
   toggleBold: (viewRef: React.ElementRef<ComponentType>) => void;
@@ -521,6 +549,13 @@ interface NativeCommands {
     width: Float,
     height: Float
   ) => void;
+  // Set (or clear, when empty) the caption of the currently-selected image.
+  setSelectedImageCaption: (
+    viewRef: React.ElementRef<ComponentType>,
+    caption: string
+  ) => void;
+  // Insert a horizontal rule (`<hr>`) at the caret, on its own line.
+  insertHorizontalRule: (viewRef: React.ElementRef<ComponentType>) => void;
   startMention: (
     viewRef: React.ElementRef<ComponentType>,
     indicator: string
@@ -614,6 +649,42 @@ interface NativeCommands {
     start: Int32,
     end: Int32
   ) => void;
+
+  // AI track-changes marks. `applyAiSuggestion`/`applyAiFlag` add the mark over
+  // an explicit range (the apply phase). The review actions are keyed by aiId:
+  // acceptAiMark flips status=accepted; rejectAiMark deletes the ranges when
+  // `deleteText` (gap-fill suggestions) or strips the mark keeping text (flags);
+  // claimAiMark strips the mark, keeping the text as the student's own. The
+  // `*All*` variants act on every pending mark of that kind.
+  applyAiSuggestion: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    aiId: string,
+    status: string,
+    model: string
+  ) => void;
+  applyAiFlag: (
+    viewRef: React.ElementRef<ComponentType>,
+    start: Int32,
+    end: Int32,
+    aiId: string,
+    status: string,
+    explanation: string
+  ) => void;
+  acceptAiMark: (
+    viewRef: React.ElementRef<ComponentType>,
+    aiId: string
+  ) => void;
+  rejectAiMark: (
+    viewRef: React.ElementRef<ComponentType>,
+    aiId: string,
+    deleteText: boolean
+  ) => void;
+  claimAiMark: (viewRef: React.ElementRef<ComponentType>, aiId: string) => void;
+  acceptAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+  rejectAllAiSuggestions: (viewRef: React.ElementRef<ComponentType>) => void;
+  rejectAllAiFlags: (viewRef: React.ElementRef<ComponentType>) => void;
 }
 
 export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
@@ -626,6 +697,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'setValue',
     'insertText',
     'setSelection',
+    'focusTableCell',
 
     // Text formatting commands
     'toggleBold',
@@ -649,6 +721,8 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'addLink',
     'removeLink',
     'addImage',
+    'setSelectedImageCaption',
+    'insertHorizontalRule',
     'startMention',
     'addMention',
     'requestHTML',
@@ -665,6 +739,14 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'toggleScript',
     'clearFormatting',
     'clearColors',
+    'applyAiSuggestion',
+    'applyAiFlag',
+    'acceptAiMark',
+    'rejectAiMark',
+    'claimAiMark',
+    'acceptAllAiSuggestions',
+    'rejectAllAiSuggestions',
+    'rejectAllAiFlags',
   ],
 });
 

@@ -9,6 +9,7 @@ export type {
   OnMentionDetected,
   OnChangeSelectionEvent,
   OnTableCellTapEvent,
+  OnAiMarkTapEvent,
   OnKeyPressEvent,
   OnPasteImagesEvent,
   OnSubmitEditing,

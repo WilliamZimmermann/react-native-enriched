@@ -338,6 +338,8 @@ export interface OnChangeStateEvent {
     /** Active paragraph writing direction: 'ltr' | 'rtl' | 'auto' ('auto' =
      *  first-strong bidi detection, no explicit dir). */
     direction: string;
+    /** Caption of the currently-selected image ('' when none / no image). */
+    selectedImageCaption: string;
 }
 export interface OnLinkDetected {
     text: string;
@@ -382,6 +384,22 @@ export interface OnTableCellTapEvent {
      *  (e.g. "0.3,0.4,0.3"). Used to place per-column resize handles. */
     colFractions: string;
 }
+export interface OnAiMarkTapEvent {
+    /** Which kind of AI mark was tapped: 'suggestion' | 'flag'. Typed as a raw
+     *  string because it crosses the codegen event bridge; consumers narrow it. */
+    kind: string;
+    aiId: string;
+    /** 'pending' | 'accepted'. */
+    status: string;
+    /** Flag explanation ('' for suggestions). */
+    explanation: string;
+    /** Bounding rect of the tapped mark in the editor view's coordinate space
+     *  (points) — anchor the accept/reject popover over it. */
+    rectX: number;
+    rectY: number;
+    rectWidth: number;
+    rectHeight: number;
+}
 export interface OnKeyPressEvent {
     key: string;
 }
@@ -408,6 +426,9 @@ export interface EnrichedTextInputInstance extends NativeMethods {
     /** Insert / replace plain text at the current selection (or caret). */
     insertText: (text: string) => void;
     setSelection: (start: number, end: number) => void;
+    /** Programmatically focus a table cell (by table ordinal + row/col); the
+     *  editor emits onTableCellTap for it. Used for Tab navigation. */
+    focusTableCell: (tableIndex: number, row: number, col: number) => void;
     /** Strip all inline formatting (bold/italic/underline/strike/code/link/
      *  highlight) from the [start, end) range, leaving plain text. */
     clearFormatting: (start: number, end: number) => void;
@@ -467,6 +488,25 @@ export interface EnrichedTextInputInstance extends NativeMethods {
      *  Toggles: applying the one already there removes it. */
     toggleScript: (start: number, end: number, superscript: boolean) => void;
     setImage: (src: string, width: number, height: number) => void;
+    /** Set (or clear, when empty) the caption of the currently-selected image.
+     *  Serialises to `data-caption` on the `<img>` (1:1 with the web editor). */
+    setSelectedImageCaption: (caption: string) => void;
+    /** Insert a horizontal rule (`<hr>`) at the caret, forced onto its own line. */
+    insertHorizontalRule: () => void;
+    /** Mark [start,end) as an AI gap-fill suggestion. */
+    applyAiSuggestion: (start: number, end: number, aiId: string, status: 'pending' | 'accepted', model: string) => void;
+    /** Mark [start,end) as an AI correction flag over the student's own text. */
+    applyAiFlag: (start: number, end: number, aiId: string, status: 'pending' | 'accepted', explanation: string) => void;
+    /** Flip a mark's status to 'accepted' (keeps text + mark). */
+    acceptAiMark: (aiId: string) => void;
+    /** Reject a mark. `deleteText` true (gap-fill suggestions) removes the text;
+     *  false (flags) strips the mark and keeps the student's text. */
+    rejectAiMark: (aiId: string, deleteText: boolean) => void;
+    /** Strip a suggestion's mark, keeping the text as the student's own. */
+    claimAiMark: (aiId: string) => void;
+    acceptAllAiSuggestions: () => void;
+    rejectAllAiSuggestions: () => void;
+    rejectAllAiFlags: () => void;
     startMention: (indicator: string) => void;
     setMention: (indicator: string, text: string, attributes?: Record<string, string>) => void;
     setTextAlignment: (alignment: 'left' | 'center' | 'right' | 'justify' | 'auto') => void;
@@ -523,6 +563,10 @@ export interface EnrichedTextInputProps extends Omit<ViewProps, 'children'> {
      *  the tapped cell's row/col and the cell's on-screen rect, so the consumer
      *  can open an inline cell editor over it. */
     onTableCellTap?: (e: NativeSyntheticEvent<OnTableCellTapEvent>) => void;
+    /** Fires when the user taps an AI suggestion/flag span. Carries the mark's
+     *  kind, id, status, explanation and on-screen rect so the consumer can open
+     *  the accept/reject popover anchored over it. */
+    onAiMarkTap?: (e: NativeSyntheticEvent<OnAiMarkTapEvent>) => void;
     onKeyPress?: (e: NativeSyntheticEvent<OnKeyPressEvent>) => void;
     onSubmitEditing?: (e: NativeSyntheticEvent<OnSubmitEditing>) => void;
     /**

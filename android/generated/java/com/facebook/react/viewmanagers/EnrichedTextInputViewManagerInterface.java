@@ -52,6 +52,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void setValue(T view, String text);
   void insertText(T view, String text);
   void setSelection(T view, int start, int end);
+  void focusTableCell(T view, int tableIndex, int row, int col);
   void toggleBold(T view);
   void toggleItalic(T view);
   void toggleUnderline(T view);
@@ -73,6 +74,8 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void addLink(T view, int start, int end, String text, String url);
   void removeLink(T view, int start, int end);
   void addImage(T view, String uri, float width, float height);
+  void setSelectedImageCaption(T view, String caption);
+  void insertHorizontalRule(T view);
   void startMention(T view, String indicator);
   void addMention(T view, String indicator, String text, String payload);
   void requestHTML(T view, int requestId);
@@ -89,4 +92,12 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void toggleScript(T view, int start, int end, boolean superscript);
   void clearFormatting(T view, int start, int end);
   void clearColors(T view, int start, int end);
+  void applyAiSuggestion(T view, int start, int end, String aiId, String status, String model);
+  void applyAiFlag(T view, int start, int end, String aiId, String status, String explanation);
+  void acceptAiMark(T view, String aiId);
+  void rejectAiMark(T view, String aiId, boolean deleteText);
+  void claimAiMark(T view, String aiId);
+  void acceptAllAiSuggestions(T view);
+  void rejectAllAiSuggestions(T view);
+  void rejectAllAiFlags(T view);
 }

@@ -72,6 +72,7 @@ export const EnrichedTextInput = ({
   onEndMention,
   onChangeSelection,
   onTableCellTap,
+  onAiMarkTap,
   onKeyPress,
   onSubmitEditing,
   returnKeyType,
@@ -316,6 +317,12 @@ export const EnrichedTextInput = ({
     setImage: (uri: string, width: number, height: number) => {
       Commands.addImage(nullthrows(nativeRef.current), uri, width, height);
     },
+    setSelectedImageCaption: (caption: string) => {
+      Commands.setSelectedImageCaption(nullthrows(nativeRef.current), caption);
+    },
+    insertHorizontalRule: () => {
+      Commands.insertHorizontalRule(nullthrows(nativeRef.current));
+    },
     setMention: (
       indicator: string,
       text: string,
@@ -341,6 +348,14 @@ export const EnrichedTextInput = ({
     setSelection: (start: number, end: number) => {
       Commands.setSelection(nullthrows(nativeRef.current), start, end);
     },
+    focusTableCell: (tableIndex: number, row: number, col: number) => {
+      Commands.focusTableCell(
+        nullthrows(nativeRef.current),
+        tableIndex,
+        row,
+        col
+      );
+    },
     setTextAlignment: (
       alignment: 'left' | 'center' | 'right' | 'justify' | 'auto'
     ) => {
@@ -348,6 +363,56 @@ export const EnrichedTextInput = ({
     },
     setTextDirection: (direction: 'ltr' | 'rtl' | 'auto') => {
       Commands.setTextDirection(nullthrows(nativeRef.current), direction);
+    },
+    applyAiSuggestion: (
+      start: number,
+      end: number,
+      aiId: string,
+      status: 'pending' | 'accepted',
+      model: string
+    ) => {
+      Commands.applyAiSuggestion(
+        nullthrows(nativeRef.current),
+        start,
+        end,
+        aiId,
+        status,
+        model
+      );
+    },
+    applyAiFlag: (
+      start: number,
+      end: number,
+      aiId: string,
+      status: 'pending' | 'accepted',
+      explanation: string
+    ) => {
+      Commands.applyAiFlag(
+        nullthrows(nativeRef.current),
+        start,
+        end,
+        aiId,
+        status,
+        explanation
+      );
+    },
+    acceptAiMark: (aiId: string) => {
+      Commands.acceptAiMark(nullthrows(nativeRef.current), aiId);
+    },
+    rejectAiMark: (aiId: string, deleteText: boolean) => {
+      Commands.rejectAiMark(nullthrows(nativeRef.current), aiId, deleteText);
+    },
+    claimAiMark: (aiId: string) => {
+      Commands.claimAiMark(nullthrows(nativeRef.current), aiId);
+    },
+    acceptAllAiSuggestions: () => {
+      Commands.acceptAllAiSuggestions(nullthrows(nativeRef.current));
+    },
+    rejectAllAiSuggestions: () => {
+      Commands.rejectAllAiSuggestions(nullthrows(nativeRef.current));
+    },
+    rejectAllAiFlags: () => {
+      Commands.rejectAllAiFlags(nullthrows(nativeRef.current));
     },
   }));
 
@@ -426,6 +491,7 @@ export const EnrichedTextInput = ({
       onMention={handleMentionEvent}
       onChangeSelection={onChangeSelection}
       onTableCellTap={onTableCellTap}
+      onAiMarkTap={onAiMarkTap}
       onRequestHtmlResult={handleRequestHtmlResult}
       onInputKeyPress={onKeyPress}
       contextMenuItems={nativeContextMenuItems}
