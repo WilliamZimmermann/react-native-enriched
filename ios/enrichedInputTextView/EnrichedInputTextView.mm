@@ -480,18 +480,6 @@ static const NSTimeInterval kKatavLinkLongPressDuration = 1.0;
   ]];
 }
 
-- (void)katavHandleBold:(UIKeyCommand *)cmd {
-  [(EnrichedTextInputView *)_input katavToggleBold];
-}
-
-- (void)katavHandleItalic:(UIKeyCommand *)cmd {
-  [(EnrichedTextInputView *)_input katavToggleItalic];
-}
-
-- (void)katavHandleUnderline:(UIKeyCommand *)cmd {
-  [(EnrichedTextInputView *)_input katavToggleUnderline];
-}
-
 - (void)katavHandleTab:(UIKeyCommand *)cmd {
   // Inside a list, Tab indents (the editor's own behaviour). Outside a list it
   // would otherwise be a silent no-op — instead surface it to JS as a Tab key
