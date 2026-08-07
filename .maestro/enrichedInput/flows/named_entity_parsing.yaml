@@ -1,0 +1,28 @@
+appId: swmansion.enriched.example
+---
+# Regression: named HTML entities other than &amp; / &lt; / &gt;.
+#
+# The iOS decoder only knew the three this editor's own serializer emits, so
+# every other named reference reached the text storage verbatim — a OneNote
+# note quoting someone read `&quot;assim&quot;`. Android decodes the full set
+# through TagSoup's HTMLSchema, which is why the same note looked right there.
+#
+# `&amp;quot;` must stay literal: the outer &amp; wins, and decoding it twice
+# would corrupt text that legitimately talks about markup.
+- launchApp
+
+- tapOn:
+    id: 'toggle-screen-button'
+
+- runFlow:
+    file: '../subflows/set_editor_value.yaml'
+    env:
+      VALUE: '<html><p>aspas &quot;x&quot; e &apos;y&apos;</p><p>curvas &ldquo;z&rdquo; travessao &mdash; grau 25&deg;C</p><p>literal &amp;quot; fica</p></html>'
+
+- assertVisible: '.*aspas "x" e .y.*'
+- assertVisible: '.*travessao . grau 25.C.*'
+- assertVisible: '.*literal &quot; fica.*'
+
+- assertNotVisible: '.*&apos;.*'
+- assertNotVisible: '.*&ldquo;.*'
+- assertNotVisible: '.*&deg;.*'

@@ -43,10 +43,48 @@ static NSString *KatavStringFromCodepoint(UTF32Char codepoint) {
 }
 
 + (NSDictionary *)getEscapedCharactersInfoFrom:(NSString *)text {
+  // Only `&amp;` / `&lt;` / `&gt;` — the three this editor's own serializer
+  // emits — were decoded, so every other named reference reached the text
+  // storage verbatim: a OneNote note quoting someone read `&quot;assim&quot;`
+  // instead of `"assim"`. Android decodes the full HTML set through its
+  // Parser, and the read-only viewer decodes these in JS, which is why the
+  // same note looked right everywhere except this editor.
+  //
+  // This is the practical set for the documents that actually reach us
+  // (OneNote, Word, TipTap), not all ~2000 HTML5 names — anything missing
+  // still lands as literal text rather than breaking. Numeric references are
+  // handled generically below and cover the rest.
+  //
+  // `&nbsp;` becomes an ordinary space, matching decodeCellEntities and the
+  // read-only viewer: a real U+00A0 would suppress line wrapping mid-note.
   NSDictionary *unescapeMap = @{
     @"&amp;" : @"&",
     @"&lt;" : @"<",
     @"&gt;" : @">",
+    @"&quot;" : @"\"",
+    @"&apos;" : @"'",
+    @"&nbsp;" : @" ",
+    @"&ldquo;" : @"“",
+    @"&rdquo;" : @"”",
+    @"&lsquo;" : @"‘",
+    @"&rsquo;" : @"’",
+    @"&laquo;" : @"«",
+    @"&raquo;" : @"»",
+    @"&ndash;" : @"–",
+    @"&mdash;" : @"—",
+    @"&hellip;" : @"…",
+    @"&bull;" : @"•",
+    @"&middot;" : @"·",
+    @"&deg;" : @"°",
+    @"&copy;" : @"©",
+    @"&reg;" : @"®",
+    @"&trade;" : @"™",
+    @"&euro;" : @"€",
+    @"&pound;" : @"£",
+    @"&sect;" : @"§",
+    @"&para;" : @"¶",
+    @"&times;" : @"×",
+    @"&divide;" : @"÷",
   };
 
   NSMutableDictionary *results = [[NSMutableDictionary alloc] init];
