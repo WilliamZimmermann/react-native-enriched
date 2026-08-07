@@ -887,8 +887,17 @@
             }];
           }
           // Record the start location so we can check if it's empty when
-          // closing
-          ongoingTags[@"li"] = @[ @(plainText.length) ];
+          // closing.
+          //
+          // Two elements, matching every other tag: [location, imageCount].
+          // This branch is the `if` arm and the generic writer below is the
+          // `else if`, so a <li> only ever got the one-element form — and any
+          // reader that reaches for the image count (finalizeTagEntry:) then
+          // threw "index 1 beyond bounds [0 .. 0]", which the caller catches by
+          // falling back to raw input: the whole imported note renders as
+          // visible markup. The close path reads index 0 only, so nothing else
+          // changes.
+          ongoingTags[@"li"] = @[ @(plainText.length), @(precedingImageCount) ];
         } else {
           // Closing tag </li>
           NSArray *tagData = ongoingTags[@"li"];
