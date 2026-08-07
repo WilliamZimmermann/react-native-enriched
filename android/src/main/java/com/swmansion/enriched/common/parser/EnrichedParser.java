@@ -510,15 +510,29 @@ public class EnrichedParser {
       } else if (c == '&') {
         out.append("&amp;");
       } else if (c >= 0xD800 && c <= 0xDFFF) {
+        // Surrogate pair (emoji and friends) — emit both halves verbatim. A lone
+        // surrogate is a malformed string and is dropped, as before.
         if (c < 0xDC00 && i + 1 < end) {
           char d = text.charAt(i + 1);
           if (d >= 0xDC00 && d <= 0xDFFF) {
             i++;
-            int codepoint = 0x010000 | (int) c - 0xD800 << 10 | (int) d - 0xDC00;
-            out.append("&#").append(codepoint).append(";");
+            out.append(c).append(d);
           }
         }
-      } else if (c > 0x7E || c < ' ') {
+      } else if (c > 0x7E) {
+        // Written as the character itself, NOT as a numeric reference.
+        //
+        // This is inherited from Android's Html.java, which escaped every
+        // non-ASCII char as "&#231;". The document is UTF-8 end to end — JSON
+        // body, Postgres, every reader — so the escaping bought nothing and cost
+        // a lot: any consumer that does not decode numeric references paints
+        // them literally, which is exactly what the iOS editor did with notes
+        // written here ("Nota&#231;&#227;o"). It also tripled the size of every
+        // accented note.
+        out.append(c);
+      } else if (c < ' ') {
+        // Control characters stay escaped: they are not printable and must not
+        // be written raw into the markup.
         out.append("&#").append((int) c).append(";");
       } else if (c == ' ') {
         while (i + 1 < end && text.charAt(i + 1) == ' ') {
