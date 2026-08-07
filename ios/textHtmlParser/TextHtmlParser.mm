@@ -71,6 +71,17 @@
   // defer it so that paragraph visual attributes are already in
   // place when inline styles override them.
   for (NSArray *arr in processedStyles) {
+    // Same shape guard as InputHtmlParser's applier: a one-element entry from
+    // a tag handler that recorded no style type would throw here, and
+    // replaceWholeFromHtml: catches that by showing the note's raw markup.
+    // Losing one style beats losing the whole note.
+    if (arr.count < 2 || ![arr[0] isKindOfClass:[NSNumber class]]) {
+      RCTLogWarn(@"[EnrichedTextView]: skipping a malformed parsed style "
+                 @"entry (%lu element(s))",
+                 (unsigned long)arr.count);
+      continue;
+    }
+
     NSNumber *styleType = (NSNumber *)arr[0];
     StylePair *stylePair = (StylePair *)arr[1];
     StyleBase *style = _view->stylesDict[styleType];

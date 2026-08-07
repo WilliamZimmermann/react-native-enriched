@@ -1,0 +1,35 @@
+appId: swmansion.enriched.example
+---
+# Regression: a <span> that carries no style the parser models.
+#
+# OneNote sizes its text in POINTS (`font-size:14pt`) and paints an explicit
+# colour; the parser reads a font size only in `px` and models no text colour.
+# Its <span> branch used to append the entry to the parsed style list anyway,
+# WITHOUT a style type — a one-element array. Reading it back threw
+#
+#   *** -[__NSArrayM objectAtIndexedSubscript:]: index 1 beyond bounds [0 .. 0]
+#
+# which InputHtmlParser catches by falling back to raw input, so the whole note
+# rendered as visible markup. Android never had this: startStyledSpan pushes a
+# no-op mark for an unstyled span instead of throwing.
+#
+# The assertions are on text rather than a screenshot on purpose: the failure
+# is the literal markup showing up, which reads the same on every device.
+- launchApp
+
+- tapOn:
+    id: 'toggle-screen-button'
+
+- runFlow:
+    file: '../subflows/set_editor_value.yaml'
+    env:
+      VALUE: '<html><p><span style="font-size:14pt;color:#000000">Vere Gordon Childe</span><span style="font-size:14pt"> foi um arqueologo.</span></p><p><span lang="pt">Sem estilo nenhum.</span></p></html>'
+
+# The prose is parsed, not printed.
+- assertVisible: '.*Vere Gordon Childe.*'
+- assertVisible: '.*Sem estilo nenhum.*'
+
+# None of the markup leaked into the text — the raw-input fallback did not fire.
+- assertNotVisible: '.*font-size.*'
+- assertNotVisible: '.*<span.*'
+- assertNotVisible: '.*<p>.*'

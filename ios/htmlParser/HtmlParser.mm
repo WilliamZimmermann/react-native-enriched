@@ -1104,25 +1104,70 @@
     } else if ([tagName isEqualToString:@"i"]) {
       [styleArr addObject:@([ItalicStyle getType])];
     } else if ([tagName isEqualToString:@"span"]) {
-      // `<span style="font-size:NNpx">` — TipTap's FontSize mark, and what
-      // our own serializer emits. Any other span carries no style we model,
-      // so it contributes nothing and its text is kept by the caller.
-      NSRegularExpression *sizeRegex = [NSRegularExpression
-          regularExpressionWithPattern:
-              @"font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*px"
-                               options:NSRegularExpressionCaseInsensitive
-                                 error:nullptr];
-      NSTextCheckingResult *sizeMatch =
-          [sizeRegex firstMatchInString:params
-                                options:0
-                                  range:NSMakeRange(0, params.length)];
-      if (sizeMatch != nullptr && sizeMatch.numberOfRanges > 1) {
-        double px = [[params substringWithRange:[sizeMatch rangeAtIndex:1]]
-            doubleValue];
-        if (px > 0) {
-          [styleArr addObject:@([FontSizeStyle getType])];
-          stylePair.styleValue = @(px);
+      // A <span> carries a style we model in exactly two shapes:
+      //
+      //   * `style="font-size:NNpx"` — TipTap's FontSize mark, and what our
+      //     own serializer emits;
+      //   * `data-ai-suggestion` / `data-ai-flag` — the AI track-changes
+      //     marks.
+      //
+      // EVERY other span carries nothing we can apply: OneNote sizes its text
+      // in POINTS (`font-size:14pt`) and paints an explicit colour, Word and
+      // the web editor add layout wrappers. Those must fall through with
+      // `continue` — the tail of this loop appends `stylePair` and files the
+      // entry, so a span that added no style type produced a ONE-element
+      // array. Reading it back threw
+      //
+      //   *** -[__NSArrayM objectAtIndexedSubscript:]: index 1 beyond
+      //       bounds [0 .. 0]
+      //
+      // and the parser's caller catches that by falling back to raw input, so
+      // a single unstyled span turned the WHOLE note into visible markup.
+      // Android never had this: startStyledSpan pushes a no-op mark for an
+      // unstyled span rather than throwing.
+      //
+      // Both shapes live in this one branch on purpose. They used to be two
+      // `else if ([tagName isEqualToString:@"span"])` arms of the same chain,
+      // which meant the second (the AI marks) could never be reached.
+      NSString *suggestionStatus = [self aiAttrValue:@"data-ai-suggestion"
+                                                  in:params];
+      NSString *flagStatus = [self aiAttrValue:@"data-ai-flag" in:params];
+
+      if (suggestionStatus != nullptr || flagStatus != nullptr) {
+        BOOL isFlag = flagStatus != nullptr;
+        [styleArr addObject:@(isFlag ? [AiFlagStyle getType]
+                                     : [AiSuggestionStyle getType])];
+        AiMarkParams *aiParams = [[AiMarkParams alloc] init];
+        aiParams.aiId = [self aiAttrValue:@"data-ai-id" in:params] ?: @"";
+        aiParams.status =
+            (isFlag ? flagStatus : suggestionStatus) ?: @"pending";
+        aiParams.model = [self aiAttrValue:@"data-ai-model" in:params] ?: @"";
+        aiParams.explanation =
+            [self aiUnescapeAttr:[self aiAttrValue:@"data-ai-explanation"
+                                                in:params]]
+                ?: @"";
+        stylePair.styleValue = aiParams;
+      } else {
+        NSRegularExpression *sizeRegex = [NSRegularExpression
+            regularExpressionWithPattern:
+                @"font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)\\s*px"
+                                 options:NSRegularExpressionCaseInsensitive
+                                   error:nullptr];
+        NSTextCheckingResult *sizeMatch =
+            [sizeRegex firstMatchInString:params
+                                  options:0
+                                    range:NSMakeRange(0, params.length)];
+        double px = 0;
+        if (sizeMatch != nullptr && sizeMatch.numberOfRanges > 1) {
+          px = [[params substringWithRange:[sizeMatch rangeAtIndex:1]]
+              doubleValue];
         }
+        if (px <= 0) {
+          // Nothing to apply — keep the text, drop the entry.
+          continue;
+        }
+        [styleArr addObject:@([FontSizeStyle getType])];
+        stylePair.styleValue = @(px);
       }
     } else if ([tagName isEqualToString:@"mark"]) {
       // <mark style="background-color: #xxx;"> — TipTap's
@@ -1357,30 +1402,8 @@
       [styleArr addObject:@([BlockQuoteStyle getType])];
     } else if ([tagName isEqualToString:@"codeblock"]) {
       [styleArr addObject:@([CodeBlockStyle getType])];
-    } else if ([tagName isEqualToString:@"span"]) {
-      // AI track-changes marks round-trip as <span data-ai-suggestion> /
-      // <span data-ai-flag>. Any other <span> is dropped (falls through).
-      NSString *suggestionStatus = [self aiAttrValue:@"data-ai-suggestion"
-                                                  in:params];
-      NSString *flagStatus = [self aiAttrValue:@"data-ai-flag" in:params];
-      if (suggestionStatus == nullptr && flagStatus == nullptr) {
-        continue;
-      }
-      BOOL isFlag = flagStatus != nullptr;
-      [styleArr addObject:@(isFlag ? [AiFlagStyle getType]
-                                   : [AiSuggestionStyle getType])];
-      AiMarkParams *aiParams = [[AiMarkParams alloc] init];
-      aiParams.aiId = [self aiAttrValue:@"data-ai-id" in:params] ?: @"";
-      aiParams.status = (isFlag ? flagStatus : suggestionStatus) ?: @"pending";
-      aiParams.model = [self aiAttrValue:@"data-ai-model" in:params] ?: @"";
-      aiParams.explanation =
-          [self aiUnescapeAttr:[self aiAttrValue:@"data-ai-explanation"
-                                              in:params]]
-              ?: @"";
-      stylePair.styleValue = aiParams;
     } else {
-      // some other external tags like span just don't get put into the
-      // processed styles
+      // some other external tags just don't get put into the processed styles
       continue;
     }
 

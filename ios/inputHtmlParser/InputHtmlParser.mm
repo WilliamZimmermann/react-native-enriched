@@ -139,6 +139,20 @@
   NSInteger zeroWidthSpaceOffset = 0;
 
   for (NSArray *arr in processedStyles) {
+    // Every entry is meant to be @[styleType, stylePair]. A tag handler that
+    // files an entry without adding a style type produces a one-element array,
+    // and reaching for index 1 then throws — which the callers above catch by
+    // replacing the WHOLE note with its raw markup. One malformed entry must
+    // cost one style, not the note, so skip it instead. (This has already bit
+    // twice: <li> stored a one-element tag record, and <span> filed an entry
+    // for a style it had not recognised.)
+    if (arr.count < 2 || ![arr[0] isKindOfClass:[NSNumber class]]) {
+      RCTLogWarn(@"[EnrichedTextInput]: skipping a malformed parsed style "
+                 @"entry (%lu element(s))",
+                 (unsigned long)arr.count);
+      continue;
+    }
+
     // unwrap all info from processed style
     NSNumber *styleType = (NSNumber *)arr[0];
     StylePair *stylePair = (StylePair *)arr[1];
