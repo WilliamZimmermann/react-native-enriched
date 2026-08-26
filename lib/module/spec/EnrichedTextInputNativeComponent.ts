@@ -493,6 +493,7 @@ interface NativeCommands {
   undo: (viewRef: React.ElementRef<ComponentType>) => void;
   redo: (viewRef: React.ElementRef<ComponentType>) => void;
   setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
+  refreshLayout: (viewRef: React.ElementRef<ComponentType>) => void;
   // Insert / replace plain text at the current selection (or caret).
   insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
   setSelection: (
@@ -695,6 +696,7 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'undo',
     'redo',
     'setValue',
+    'refreshLayout',
     'insertText',
     'setSelection',
     'focusTableCell',

@@ -135,6 +135,9 @@ public class EnrichedTextInputViewManagerDelegate<T extends View, U extends Base
       case "setValue":
         mViewManager.setValue(view, args.getString(0));
         break;
+      case "refreshLayout":
+        mViewManager.refreshLayout(view);
+        break;
       case "insertText":
         mViewManager.insertText(view, args.getString(0));
         break;

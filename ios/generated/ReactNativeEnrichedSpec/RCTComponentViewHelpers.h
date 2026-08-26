@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)undo;
 - (void)redo;
 - (void)setValue:(NSString *)text;
+- (void)refreshLayout;
 - (void)insertText:(NSString *)text;
 - (void)setSelection:(NSInteger)start end:(NSInteger)end;
 - (void)focusTableCell:(NSInteger)tableIndex row:(NSInteger)row col:(NSInteger)col;
@@ -149,6 +150,20 @@ if ([commandName isEqualToString:@"setValue"]) {
   NSString * text = (NSString *)arg0;
 
   [componentView setValue:text];
+  return;
+}
+
+if ([commandName isEqualToString:@"refreshLayout"]) {
+#if RCT_DEBUG
+  if ([args count] != 0) {
+    RCTLogError(@"%@ command %@ received %d arguments, expected %d.", @"EnrichedTextInputView", commandName, (int)[args count], 0);
+    return;
+  }
+#endif
+
+  
+
+  [componentView refreshLayout];
   return;
 }
 

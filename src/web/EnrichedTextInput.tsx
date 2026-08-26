@@ -324,6 +324,9 @@ export const EnrichedTextInput = ({
       redo: () => runFocused(editor, (c) => c.redo()),
       setValue: (value: string) =>
         editor.commands.setContent(prepareHtmlForTiptap(value)),
+      // No-op on web: the DOM reflows attachments on its own when the
+      // container resizes, so there is nothing to recompute by hand.
+      refreshLayout: () => {},
       insertText: (text: string) =>
         runFocused(editor, (c) => c.insertContent(text)),
       setSelection: (start, end) => {

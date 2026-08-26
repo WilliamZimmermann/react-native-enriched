@@ -423,6 +423,8 @@ export interface EnrichedTextInputInstance extends NativeMethods {
     undo: () => void;
     redo: () => void;
     setValue: (value: string) => void;
+    /** Recompute native text/image attachment layout after parent size changes. */
+    refreshLayout: () => void;
     /** Insert / replace plain text at the current selection (or caret). */
     insertText: (text: string) => void;
     setSelection: (start: number, end: number) => void;

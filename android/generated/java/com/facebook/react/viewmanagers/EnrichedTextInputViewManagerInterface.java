@@ -50,6 +50,7 @@ public interface EnrichedTextInputViewManagerInterface<T extends View> extends V
   void undo(T view);
   void redo(T view);
   void setValue(T view, String text);
+  void refreshLayout(T view);
   void insertText(T view, String text);
   void setSelection(T view, int start, int end);
   void focusTableCell(T view, int tableIndex, int row, int col);

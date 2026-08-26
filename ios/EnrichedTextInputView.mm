@@ -1299,6 +1299,9 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   } else if ([commandName isEqualToString:@"setValue"]) {
     NSString *value = (NSString *)args[0];
     [self setValue:value];
+  } else if ([commandName isEqualToString:@"refreshLayout"]) {
+    [self layoutAttachments];
+    [self scheduleRelayoutIfNeeded];
   } else if ([commandName isEqualToString:@"insertText"]) {
     NSString *text = (NSString *)args[0];
     [self insertTextAtSelection:text];
@@ -1522,6 +1525,11 @@ Class<RCTComponentViewProtocol> EnrichedTextInputViewCls(void) {
   // set selectedRange and check for changes
   textView.selectedRange = NSRange(textView.textStorage.string.length, 0);
   [self anyTextMayHaveBeenModified];
+}
+
+- (void)refreshLayout {
+  [self layoutAttachments];
+  [self scheduleRelayoutIfNeeded];
 }
 
 // Insert / replace plain text at the current selection (or caret). Used by the

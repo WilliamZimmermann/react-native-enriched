@@ -571,6 +571,12 @@ class EnrichedTextInputView :
     layoutManager.invalidateLayout()
   }
 
+  fun refreshLayout() {
+    layoutManager.invalidateLayout()
+    requestLayout()
+    invalidate()
+  }
+
   fun setCustomSelection(
     visibleStart: Int,
     visibleEnd: Int,

@@ -421,6 +421,7 @@ interface NativeCommands {
     undo: (viewRef: React.ElementRef<ComponentType>) => void;
     redo: (viewRef: React.ElementRef<ComponentType>) => void;
     setValue: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
+    refreshLayout: (viewRef: React.ElementRef<ComponentType>) => void;
     insertText: (viewRef: React.ElementRef<ComponentType>, text: string) => void;
     setSelection: (viewRef: React.ElementRef<ComponentType>, start: Int32, end: Int32) => void;
     focusTableCell: (viewRef: React.ElementRef<ComponentType>, tableIndex: Int32, row: Int32, col: Int32) => void;

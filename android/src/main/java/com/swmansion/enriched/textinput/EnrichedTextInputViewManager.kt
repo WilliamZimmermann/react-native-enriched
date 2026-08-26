@@ -357,6 +357,10 @@ class EnrichedTextInputViewManager :
     view?.setValue(text)
   }
 
+  override fun refreshLayout(view: EnrichedTextInputView?) {
+    view?.refreshLayout()
+  }
+
   override fun setSelection(
     view: EnrichedTextInputView?,
     start: Int,

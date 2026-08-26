@@ -192,6 +192,9 @@ export const EnrichedTextInput = ({
     setValue: (value: string) => {
       Commands.setValue(nullthrows(nativeRef.current), value);
     },
+    refreshLayout: () => {
+      Commands.refreshLayout(nullthrows(nativeRef.current));
+    },
     insertText: (text: string) => {
       Commands.insertText(nullthrows(nativeRef.current), text);
     },
