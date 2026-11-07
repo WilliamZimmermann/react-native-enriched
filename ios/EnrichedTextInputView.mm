@@ -17,7 +17,7 @@
 #import "TableCellHitTestUtils.h"
 #import "TextBlockTapGestureRecognizer.h"
 #import "TextInsertionUtils.h"
-#import "UIView+React.h"
+#import <React/UIView+React.h>
 #import "WordsUtils.h"
 #import "ZeroWidthSpaceUtils.h"
 #import <React/RCTConversions.h>

@@ -4,7 +4,7 @@
 #import "OccurenceUtils.h"
 #import "StyleHeaders.h"
 #import "TextInsertionUtils.h"
-#import "UIView+React.h"
+#import <React/UIView+React.h>
 #import "WordsUtils.h"
 
 static NSString *const ManualLinkAttributeName = @"EnrichedManualLink";

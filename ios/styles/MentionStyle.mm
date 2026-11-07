@@ -3,7 +3,7 @@
 #import "EnrichedTextInputView.h"
 #import "StyleHeaders.h"
 #import "TextInsertionUtils.h"
-#import "UIView+React.h"
+#import <React/UIView+React.h>
 #import "WordsUtils.h"
 
 // custom NSAttributedStringKey to differentiate from links
